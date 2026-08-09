@@ -1,0 +1,23 @@
+# Downstream change inventory
+
+This inventory explains the maintained difference from upstream Arasan 26.0.
+It should be updated whenever the integration branch changes.
+
+| Area | Downstream change | Why it exists | Possible upstream value |
+| --- | --- | --- | --- |
+| Protocol input | Adds `Protocol::dispatchCommand` and an option to disable stdin polling | Lets an in-process host reuse Arasan's UCI parser and search-time command handling | High; general embedded use |
+| Protocol output | Routes engine protocol output through a configurable stream that defaults to `std::cout` | Delivers complete UCI lines without replacing host stdout | High; general library integration |
+| Lifecycle | Allows global initialization without desktop process stack configuration | Avoids mutating a containing mobile or browser process | High; general embedding safety |
+| Lifecycle cleanup | Clears owned global pointers and NNUE initialization state | Supports deterministic teardown and later reinitialization | Medium; general robustness |
+| C API | Adds the single-instance API in `src/embed` | Provides a stable primitive ABI for Swift, JNI/Dart FFI, and WASM | High; general embedding use |
+| Embedded profile | Disables book, ECO, tablebases, learning, and game storage by default | Avoids undeclared files and writes in app sandboxes | Medium; profile is policy-sensitive |
+| Native build | Adds static-library and smoke-test Make targets | Proves the common host before platform packaging | Medium |
+| Documentation | Adds fork, provenance, embedding, and delta documents | Makes source and artifacts reproducible | High |
+
+No engine evaluation, search, or strength code is intentionally changed. No
+upstream pull requests are being opened during the initial implementation.
+
+Likely long-term downstream-only work includes signed release artifacts,
+XCFramework/AAR packaging, JavaScript Worker glue, and consumer-specific release
+automation. Generic lifecycle, portability, API, tests, and build fixes may be
+reasonable upstream candidates later, but upstream acceptance is not required.

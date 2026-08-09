@@ -263,15 +263,20 @@ utils: dirs $(EXPORT)/playchess $(EXPORT)/makebook $(EXPORT)/ecocoder $(EXPORT)/
 
 unit: dirs $(EXPORT)/unit
 
+embedded: dirs $(EXPORT)/libarasan_embed.a
+
+embedded-smoke: dirs $(EXPORT)/arasan-embed-smoke
+
 clean: dirs
 	rm -f $(BUILD)/*.o
+	rm -f $(BUILD)/embed/*.o
 	rm -f $(PROFILE)/*.o
 	rm -f $(PROFILE)/*.gcda
 	rm -f $(PROFILE)/*.gcno
 	rm -f $(PROFILE)/*.dyn
 	rm -f $(PROFILE)/*.nnue
 	rm -f $(PROF_DATA)/*.*
-	cd $(EXPORT) && rm -f arasanx* makebook playchess ecocoder selfplay blundercheck sortpgn unit
+	cd $(EXPORT) && rm -f arasanx* arasan-embed-smoke libarasan_embed.a makebook playchess ecocoder selfplay blundercheck sortpgn unit
 
 dirs:
 	mkdir -p $(BUILD)
@@ -297,6 +302,13 @@ $(BUILD)/%.o: %.cpp
 	$(CPP) $(FLAGS) $(OPT) $(TRACE) $(SMPFLAGS) $(NNUE_FLAGS) $(DEBUG) $(CXXFLAGS) -c -o $@ $<
 
 $(BUILD)/%.o: $(UTIL)/%.cpp
+	$(CPP) $(FLAGS) $(OPT) $(TRACE) $(SMPFLAGS) $(NNUE_FLAGS) $(DEBUG) $(CXXFLAGS) -c -o $@ $<
+
+$(BUILD)/embed/arasan_embed.o: embed/arasan_embed.cpp
+	mkdir -p $(BUILD)/embed
+	$(CPP) $(FLAGS) $(OPT) $(TRACE) $(SMPFLAGS) $(NNUE_FLAGS) $(DEBUG) $(CXXFLAGS) -DARASAN_EMBED_BUILD -c -o $@ $<
+
+$(BUILD)/embed_smoke.o: ../tests/embed_smoke.cpp
 	$(CPP) $(FLAGS) $(OPT) $(TRACE) $(SMPFLAGS) $(NNUE_FLAGS) $(DEBUG) $(CXXFLAGS) -c -o $@ $<
 
 ifeq ($(PASS),1)
@@ -391,6 +403,8 @@ SELFPLAY_OBJS   := $(patsubst %.cpp, $(BUILD)/%.o, $(SELFPLAY_SOURCES)) $(TB_OBJ
 BLUNDERCHECK_OBJS := $(patsubst %.cpp, $(BUILD)/%.o, $(BLUNDERCHECK_SOURCES)) $(TB_OBJS)
 SORTPGN_OBJS 	:= $(patsubst %.cpp, $(BUILD)/%.o, $(SORTPGN_SOURCES)) $(TB_OBJS)
 UNIT_OBJS       := $(patsubst %.cpp, $(BUILD)/%.o, $(UNIT_SOURCES)) $(TB_OBJS)
+EMBED_ENGINE_OBJS := $(filter-out $(BUILD)/arasanx.o,$(ARASANX_OBJS))
+EMBED_OBJS := $(EMBED_ENGINE_OBJS) $(BUILD)/embed/arasan_embed.o
 
 $(EXPORT)/makebook:  $(MAKEBOOK_OBJS)
 	cd $(BUILD) && $(LD) $(LDFLAGS) $(LTO) $(OPT) $(MAKEBOOK_OBJS) $(DEBUG) $(CXXFLAGS) -o $(EXPORT)/makebook -lstdc++ $(LIBS) $(SMPLIB)
@@ -412,6 +426,12 @@ $(EXPORT)/sortpgn:  $(SORTPGN_OBJS)
 
 $(EXPORT)/unit: $(UNIT_OBJS)
 	cd $(BUILD) && $(LD) $(LDFLAGS) $(LTO) $(OPT) $(UNIT_OBJS) $(DEBUG) $(CXXFLAGS) -o $(EXPORT)/unit -lstdc++ $(LIBS) $(SMPLIB)
+
+$(EXPORT)/libarasan_embed.a: $(EMBED_OBJS)
+	$(AR) rcs $@ $(EMBED_OBJS)
+
+$(EXPORT)/arasan-embed-smoke: $(BUILD)/embed_smoke.o $(EXPORT)/libarasan_embed.a
+	$(LD) $(LDFLAGS) $(LTO) $(OPT) $(BUILD)/embed_smoke.o $(EXPORT)/libarasan_embed.a $(DEBUG) $(CXXFLAGS) -o $@ -lstdc++ $(LIBS) $(SMPLIB)
 
 ifeq ($(PASS),1)
 profile: dirs $(PROFILE)/arasanx
@@ -444,7 +464,6 @@ else
 	rm -f $(PROFILE)/arasanx $(EXPORT)/arasanx
 endif
 
-.PHONY: all clean dirs profile profile-run install release unit
+.PHONY: all clean dirs embedded embedded-smoke profile profile-run install release unit
 
 .EXPORT_ALL_VARIABLES:
-

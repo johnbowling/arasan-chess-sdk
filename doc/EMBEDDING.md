@@ -1,0 +1,81 @@
+# Embedding Arasan
+
+The embedded host preserves UCI as the application boundary. It accepts one UCI
+command at a time and delivers every engine response as a complete line through
+a C callback. It does not redirect process stdin or stdout and does not modify
+the host process's signal handlers or stack limit.
+
+## C interface
+
+The public header is `src/embed/arasan_embed.h`:
+
+```c
+typedef void (*arasan_output_callback)(const char *line, void *context);
+
+int arasan_embed_initialize(
+    const char *resource_root,
+    arasan_output_callback output,
+    void *context
+);
+int arasan_embed_send(const char *uci_command);
+int arasan_embed_is_ready(void);
+int arasan_embed_is_searching(void);
+void arasan_embed_shutdown(void);
+```
+
+The first API version intentionally supports one engine instance per process.
+The output line is valid only during its callback. Host code should serialize
+ordinary commands. A bounded `go` call is synchronous; a second host thread may
+submit `stop` during a search. Do not call shutdown from inside the callback.
+
+`resource_root` must be an explicit directory containing the NNUE file recorded
+in [PROVENANCE.md](PROVENANCE.md). Embedded initialization does not search the
+executable directory or the user's home directory.
+
+Embedded defaults are deliberately conservative:
+
+- one search thread;
+- opening book and ECO loading disabled;
+- Syzygy tablebases disabled at runtime;
+- position learning disabled; and
+- game storage disabled.
+
+Consumers can change supported engine options with normal UCI `setoption`
+commands after initialization.
+
+## Native build and smoke test
+
+Initialize the required Syzygy source submodule, then build the command-line and
+embedded targets. On Apple Silicon:
+
+```sh
+git submodule update --init src/syzygy
+make -C src clean
+make -C src BUILD_TYPE=neon
+make -C src BUILD_TYPE=neon embedded-smoke
+./bin/arasan-embed-smoke network
+```
+
+The smoke test verifies this sequence:
+
+1. initialize from an explicit resource root;
+2. `uci` through `uciok`;
+3. `isready` through `readyok`;
+4. load a FEN;
+5. perform `go movetime 100`;
+6. receive a legal `bestmove`; and
+7. interrupt `go infinite` from another host thread;
+8. send `quit` and shut down cleanly.
+
+The outputs are `bin/libarasan_embed.a` and `bin/arasan-embed-smoke`. These are
+local proof artifacts, not consumer releases.
+
+## Current limitations
+
+- Apple XCFramework, Android shared-library/AAR, and Emscripten targets have not
+  been added yet.
+- The Makefile does not generate header dependencies, so use a clean build after
+  changing a public header or build configuration.
+- Platform consumers and release automation do not exist yet.
+- This first host has a single global engine because Arasan itself has global
+  engine state.
