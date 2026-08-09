@@ -189,7 +189,7 @@ static void updatePV([[maybe_unused]] const Board &board, NodeInfo *node, NodeIn
 #if defined(_DEBUG) || defined(SEARCH_TRACE)
 #ifdef SEARCH_TRACE
     if (mainThread && node->pv_length>0) {
-        indent(ply); std::cout << "PV: ";
+        indent(ply); globals::output() << "PV: ";
     }
 #endif
     Board board_copy(board);
@@ -197,8 +197,8 @@ static void updatePV([[maybe_unused]] const Board &board, NodeInfo *node, NodeIn
         assert(i<Constants::MaxPly);
 #ifdef SEARCH_TRACE
         if (mainThread) {
-            MoveImage(node->pv[i],std::cout);
-            std::cout << ' ';
+            MoveImage(node->pv[i],globals::output());
+            globals::output() << ' ';
         }
 #endif
         assert(legalMove(board_copy,node->pv[i]));
@@ -206,7 +206,7 @@ static void updatePV([[maybe_unused]] const Board &board, NodeInfo *node, NodeIn
     }
 #ifdef SEARCH_TRACE
     if (mainThread && node->pv_length>0) {
-        std::cout << std::endl;
+        globals::output() << std::endl;
     }
 #endif
 #endif
@@ -224,7 +224,7 @@ static int updateMove(const Board &board, NodeInfo *node, Move move, score_t sco
    if (score >= node->beta) {
 #ifdef SEARCH_TRACE
       if (mainThread) {
-         indent(ply); std::cout << "beta cutoff" << std::endl;
+         indent(ply); globals::output() << "beta cutoff" << std::endl;
       }
 #endif
       node->cutoff++;
@@ -291,13 +291,13 @@ void Search::init() {
     for (int d = 0; d <= LMP_DEPTH; d++) {
         LMP_MOVE_COUNT[0][d] = static_cast<int>(std::round(LMP_BASE_NON_IMP + LMP_SLOPE_NON_IMP * std::pow(d, LMP_EXP_NON_IMP/100.0)/100.0));
         LMP_MOVE_COUNT[1][d] = static_cast<int>(std::round(LMP_BASE_IMP + LMP_SLOPE_IMP * std::pow(d, LMP_EXP_IMP/100.0)/100.0));
-        //        std::cout << LMP_MOVE_COUNT[0][d] << ' ' << LMP_MOVE_COUNT[1][d] << std::endl;
+        //        globals::output() << LMP_MOVE_COUNT[0][d] << ' ' << LMP_MOVE_COUNT[1][d] << std::endl;
     }
 /*
     for (int i = 3; i < 64; i++) {
-      std::cout << "--- i=" << i << std::endl;
+      globals::output() << "--- i=" << i << std::endl;
       for (int m=0; m<64; m++) {
-         std::cout << m << " " <<
+         globals::output() << m << " " <<
          1.0*LMR_REDUCTION[0][i][m]/DEPTH_INCREMENT << ' ' <<
          1.0*LMR_REDUCTION[1][i][m]/DEPTH_INCREMENT << ' ' <<
          std::endl;
@@ -420,7 +420,7 @@ Move SearchController::findBestMove(
         // this in analysis mode: return a move if possible. Also do
         // a search in all cases for UCI, since the engine cannot
         // claim draw and some interfaces may expect a move.)
-        if (debugOut()) std::cout << globals::debugPrefix << "skipping search, draw" << std::endl;
+        if (debugOut()) globals::output() << globals::debugPrefix << "skipping search, draw" << std::endl;
         stats->state = Draw;
         stats->value = drawScore(board);
         return NullMove;
@@ -450,7 +450,7 @@ Move SearchController::findBestMove(
    if (globals::options.search.strength < 100 && (background || time_target != Constants::INFINITE_TIME)) {
       int new_ply_limit = STRENGTH_DEPTH_LIMITS[(2*globals::options.search.strength)/5];
       if (debugOut()) {
-          std::cout << globals::debugPrefix << "strength=" << globals::options.search.strength << " ply limit=" <<
+          globals::output() << globals::debugPrefix << "strength=" << globals::options.search.strength << " ply limit=" <<
               new_ply_limit << std::endl;
       }
       if (board.getMaterial(White).materialLevel() +
@@ -461,7 +461,7 @@ Move SearchController::findBestMove(
       }
       ply_limit = std::min<int>(ply_limit,new_ply_limit);
       if (debugOut()) {
-          std::cout << globals::debugPrefix << "ply limit=" << ply_limit << std::endl;
+          globals::output() << globals::debugPrefix << "ply limit=" << ply_limit << std::endl;
       }
    }
 
@@ -473,7 +473,7 @@ Move SearchController::findBestMove(
    tb_score = Constants::INVALID_SCORE;
    tb_root_probes = tb_root_hits = 0;
 #ifdef SEARCH_TRACE
-   std::cout << "use tablebases = " << std::boolalpha << srcOpts.use_tablebases << " EGTBMenCount = " <<
+   globals::output() << "use tablebases = " << std::boolalpha << srcOpts.use_tablebases << " EGTBMenCount = " <<
        globals::EGTBMenCount << std::endl;
 #endif
    if (srcOpts.use_tablebases) {
@@ -495,9 +495,9 @@ Move SearchController::findBestMove(
            // do not probe in the search
            tb_probe_in_search = false;
            if (debugOut()) {
-               std::cout << globals::debugPrefix << board << " root tb hit, score=";
-               Scoring::printScore(tb_score,std::cout);
-               std::cout << std::endl;
+               globals::output() << globals::debugPrefix << board << " root tb hit, score=";
+               Scoring::printScore(tb_score,globals::output());
+               globals::output() << std::endl;
            }
        }
    }
@@ -513,11 +513,11 @@ Move SearchController::findBestMove(
        }
    }
 #ifdef SEARCH_TRACE
-   std::cout << s.str() << std::endl;
+   globals::output() << s.str() << std::endl;
 #endif
 #ifdef SYZYGY_TBS
    if (debugOut() && tb_hit) {
-       std::cout << globals::debugPrefix << s.str() << std::endl;
+       globals::output() << globals::debugPrefix << s.str() << std::endl;
    }
 #endif
    if (value == Constants::INVALID_SCORE) {
@@ -537,18 +537,18 @@ Move SearchController::findBestMove(
    // Mark thread 0 complete.
    pool->setCompleted(0);
 
-   if (debugOut()) std::cout << globals::debugPrefix << "waiting for thread completion" << std::endl;
+   if (debugOut()) globals::output() << globals::debugPrefix << "waiting for thread completion" << std::endl;
 
    // Wait for all threads to complete
    pool->waitAll();
 
    if (debugOut()) {
-       std::cout << globals::debugPrefix << "thread 0 depth=" << rootSearch->stats.completedDepth <<
+       globals::output() << globals::debugPrefix << "thread 0 depth=" << rootSearch->stats.completedDepth <<
            " score=";
-       Scoring::printScore(rootSearch->stats.display_value,std::cout);
-       std::cout << " failHigh=" << (int)stats->failHigh << " failLow=" <<
+       Scoring::printScore(rootSearch->stats.display_value,globals::output());
+       globals::output() << " failHigh=" << (int)stats->failHigh << " failLow=" <<
            (int)stats->failLow;
-       std::cout << " pv=" << rootSearch->stats.best_line_image << std::endl;
+       globals::output() << " pv=" << rootSearch->stats.best_line_image << std::endl;
    }
    bool subOpt = false;
    if (srcOpts.multipv == 1) {
@@ -568,15 +568,15 @@ Move SearchController::findBestMove(
    delete mg;
 
 #ifdef SEARCH_TRACE
-   std::cout << globals::debugPrefix << "best thread: score=";
-   Scoring::printScore(stats->value,std::cout);
-   std::cout << " pv=" << stats->best_line_image << std::endl;
+   globals::output() << globals::debugPrefix << "best thread: score=";
+   Scoring::printScore(stats->value,globals::output());
+   globals::output() << " pv=" << stats->best_line_image << std::endl;
 #endif
    if (debugOut()) {
-      std::cout << globals::debugPrefix << "best thread: depth=" << stats->completedDepth <<  " score=";
-      Scoring::printScore(stats->value,std::cout);
-      std::cout << " fail high=" << (int)stats->failHigh << " fail low=" << stats->failLow;
-      std::cout << " pv=" << stats->best_line_image << std::endl;
+      globals::output() << globals::debugPrefix << "best thread: depth=" << stats->completedDepth <<  " score=";
+      Scoring::printScore(stats->value,globals::output());
+      globals::output() << " fail high=" << (int)stats->failHigh << " fail low=" << stats->failLow;
+      globals::output() << " pv=" << stats->best_line_image << std::endl;
    }
 
    // search done (all threads), set status and report statistics
@@ -609,7 +609,7 @@ Move SearchController::findBestMove(
 #endif
          ) {
          if (debugOut()) {
-             std::cout << globals::debugPrefix << "resigning game (low score)" << std::endl;
+             globals::output() << globals::debugPrefix << "resigning game (low score)" << std::endl;
          }
          state = Resigns;
          stats->end_of_game = true;
@@ -617,63 +617,63 @@ Move SearchController::findBestMove(
    }
 
    if (talkLevel == TalkLevel::Test) {
-      std::ios_base::fmtflags original_flags = std::cout.flags();
-      std::cout.setf(std::ios::fixed);
-      std::cout << std::setprecision(2);
+      std::ios_base::fmtflags original_flags = globals::output().flags();
+      globals::output().setf(std::ios::fixed);
+      globals::output() << std::setprecision(2);
       if (elapsed_time > 0) {
-         Statistics::printNPS(std::cout,stats->num_nodes,elapsed_time);
-         std::cout << " nodes/second." << std::endl;
+         Statistics::printNPS(globals::output(),stats->num_nodes,elapsed_time);
+         globals::output() << " nodes/second." << std::endl;
       }
 #ifdef SEARCH_STATS
-      std::cout << (stats->num_nodes-stats->num_qnodes) << " regular nodes, " <<
+      globals::output() << (stats->num_nodes-stats->num_qnodes) << " regular nodes, " <<
          stats->num_qnodes << " quiescence nodes." << std::endl;
-      std::cout << stats->hash_searches << " searches of hash table, " <<
+      globals::output() << stats->hash_searches << " searches of hash table, " <<
          stats->hash_hits << " successful";
       if (stats->hash_searches != 0)
-         std::cout << " (" <<
+         globals::output() << " (" <<
             (int)((100.0*(float)stats->hash_hits)/((float)stats->hash_searches)) <<
             " percent).";
-      std::cout << std::endl;
-      std::cout << "hash table is " << std::setprecision(2) <<
+      globals::output() << std::endl;
+      globals::output() << "hash table is " << std::setprecision(2) <<
           1.0F*hashTable.pctFull()/10.0F << "% full." << std::endl;
 #endif
 #ifdef MOVE_ORDER_STATS
-      std::cout << "move ordering: ";
+      globals::output() << "move ordering: ";
       static const char *labels[] = {"1st","2nd","3rd","4th"};
       for (int i = 0; i < 4; i++) {
-         std::cout << std::setprecision(2) << labels[i] << " " <<
+         globals::output() << std::setprecision(2) << labels[i] << " " <<
             (100.0*stats->move_order[i])/(float)stats->move_order_count << "% " ;
       }
-      std::cout << std::endl;
+      globals::output() << std::endl;
 #endif
 #ifdef SEARCH_STATS
-      std::cout << "pre-search pruning: " << std::endl;
-      std::cout << ' ' << stats->razored << " (" << std::setprecision(2) << 100.0*stats->razored/stats->reg_nodes << "%) razoring" << std::endl;
-      std::cout << ' ' << stats->static_null_pruning << " (" << std::setprecision(2) << 100.0*stats->static_null_pruning/stats->reg_nodes << "%) static null pruning" << std::endl;
-      std::cout << ' ' << stats->null_cuts << " (" << std::setprecision(2) << 100.0*stats->null_cuts/stats->reg_nodes << "%) null cuts" << std::endl;
-      std::cout << ' ' << stats->multicut << " (" << std::setprecision(2) << 100.0*stats->multicut/stats->reg_nodes << "%) multicut" << std::endl;
-      std::cout << ' ' << stats->non_singular_reductions << " (" << std::setprecision(2) << 100.0*stats->non_singular_reductions/stats->reg_nodes << "%) non-singular pruning" << std::endl;
-      std::cout << "search pruning: " << std::endl;
-      std::cout << ' ' << stats->futility_pruning << " (" << std::setprecision(2) << 100.0*stats->futility_pruning/stats->moves_searched << "%) futility" << std::endl;
-      std::cout << ' ' << stats->futility_pruning_caps << " (" << std::setprecision(2) << 100.0*stats->futility_pruning_caps/stats->moves_searched << "%) futility (captures)" << std::endl;
-      std::cout << ' ' << stats->history_pruning << " (" << std::setprecision(2) << 100.0*stats->history_pruning/stats->moves_searched << "%) history" << std::endl;
-      std::cout << ' ' << stats->lmp << " (" << std::setprecision(2) << 100.0*stats->lmp/stats->moves_searched << "%) lmp" << std::endl;
-      std::cout << ' ' << stats->see_pruning << " (" << std::setprecision(2) << 100.0*stats->see_pruning/stats->moves_searched << "%) SEE" << std::endl;
-      std::cout << ' ' << stats->reduced << " (" << std::setprecision(2) << 100.0*stats->reduced/stats->moves_searched << "%) reduced" << std::endl;
-      std::cout << "extensions: " <<
+      globals::output() << "pre-search pruning: " << std::endl;
+      globals::output() << ' ' << stats->razored << " (" << std::setprecision(2) << 100.0*stats->razored/stats->reg_nodes << "%) razoring" << std::endl;
+      globals::output() << ' ' << stats->static_null_pruning << " (" << std::setprecision(2) << 100.0*stats->static_null_pruning/stats->reg_nodes << "%) static null pruning" << std::endl;
+      globals::output() << ' ' << stats->null_cuts << " (" << std::setprecision(2) << 100.0*stats->null_cuts/stats->reg_nodes << "%) null cuts" << std::endl;
+      globals::output() << ' ' << stats->multicut << " (" << std::setprecision(2) << 100.0*stats->multicut/stats->reg_nodes << "%) multicut" << std::endl;
+      globals::output() << ' ' << stats->non_singular_reductions << " (" << std::setprecision(2) << 100.0*stats->non_singular_reductions/stats->reg_nodes << "%) non-singular pruning" << std::endl;
+      globals::output() << "search pruning: " << std::endl;
+      globals::output() << ' ' << stats->futility_pruning << " (" << std::setprecision(2) << 100.0*stats->futility_pruning/stats->moves_searched << "%) futility" << std::endl;
+      globals::output() << ' ' << stats->futility_pruning_caps << " (" << std::setprecision(2) << 100.0*stats->futility_pruning_caps/stats->moves_searched << "%) futility (captures)" << std::endl;
+      globals::output() << ' ' << stats->history_pruning << " (" << std::setprecision(2) << 100.0*stats->history_pruning/stats->moves_searched << "%) history" << std::endl;
+      globals::output() << ' ' << stats->lmp << " (" << std::setprecision(2) << 100.0*stats->lmp/stats->moves_searched << "%) lmp" << std::endl;
+      globals::output() << ' ' << stats->see_pruning << " (" << std::setprecision(2) << 100.0*stats->see_pruning/stats->moves_searched << "%) SEE" << std::endl;
+      globals::output() << ' ' << stats->reduced << " (" << std::setprecision(2) << 100.0*stats->reduced/stats->moves_searched << "%) reduced" << std::endl;
+      globals::output() << "extensions: " <<
           stats->check_extensions << " (" << 100.0*stats->check_extensions/stats->moves_searched << "%) check, " <<
           stats->capture_extensions << " (" << 100.0*stats->capture_extensions/stats->moves_searched << "%) capture, " <<
           stats->pawn_extensions << " (" << 100.0*stats->pawn_extensions/stats->moves_searched << "%) pawn";
 #ifdef SINGULAR_EXTENSION
-      std::cout << ", " << stats->singular_extensions << " (" << 100.0*stats->singular_extensions/stats->moves_searched << "%) singular" << std::endl;
-      std::cout << stats->singular_searches << " singular searches done";
+      globals::output() << ", " << stats->singular_extensions << " (" << 100.0*stats->singular_extensions/stats->moves_searched << "%) singular" << std::endl;
+      globals::output() << stats->singular_searches << " singular searches done";
 #endif
-      std::cout << std::endl;
+      globals::output() << std::endl;
 #endif
-      std::cout << stats->tb_probes << " tablebase probes, " <<
+      globals::output() << stats->tb_probes << " tablebase probes, " <<
          stats->tb_hits << " tablebase hits" << std::endl;
-      std::cout << std::flush;
-      std::cout.flags(original_flags);
+      globals::output() << std::flush;
+      globals::output().flags(original_flags);
    }
 
    is_searching = false;
@@ -764,11 +764,11 @@ void SearchController::setTalkLevel(TalkLevel t) {
 
 void SearchController::uciSendInfos(const Board &board, Move move, int move_index, int depth) {
    if (uci) {
-      std::cout << "info depth " << depth;
-      std::cout << " currmove ";
-      Notation::image(board,move,Notation::OutputFormat::UCI,std::cout);
-      std::cout << " currmovenumber " << move_index;
-      std::cout << std::endl << std::flush;
+      globals::output() << "info depth " << depth;
+      globals::output() << " currmove ";
+      Notation::image(board,move,Notation::OutputFormat::UCI,globals::output());
+      globals::output() << " currmovenumber " << move_index;
+      globals::output() << std::endl << std::flush;
    }
 }
 
@@ -861,7 +861,7 @@ void SearchController::applySearchHistoryFactors() {
             bonus_time = -static_cast<int64_t>(std::floor(searchHistoryReductionFactor*elapsed_time/3));
         }
         if (debugOut() && typeOfSearch == TimeLimit && bonus_time) {
-            std::cout << globals::debugPrefix << "bonus time=" << bonus_time << std::endl;
+            globals::output() << globals::debugPrefix << "bonus time=" << bonus_time << std::endl;
         }
     }
 }
@@ -913,7 +913,7 @@ int Search::checkTime() {
         controller->terminateNow();
     }
     if (terminate) {
-       if (debugOut()) std::cout << globals::debugPrefix << "check time, already terminated" << std::endl;
+       if (debugOut()) globals::output() << globals::debugPrefix << "check time, already terminated" << std::endl;
        return 1; // already stopped search
     }
 
@@ -942,17 +942,17 @@ int Search::checkTime() {
     if (controller->monitor_function && controller->isMonitorThread(ti->index)) {
         if (controller->monitor_function(controller,stats)) {
             if (debugOut()) {
-                std::cout << globals::debugPrefix << "terminating due to program or user input" << std::endl;
+                globals::output() << globals::debugPrefix << "terminating due to program or user input" << std::endl;
             }
             val = 1;
         } else {
             controller->updateGlobalStats(stats);
             if (controller->uci && getElapsedTime(controller->last_time,current_time) >= 3000) {
                 const uint64_t total_nodes = controller->totalNodes();
-                std::cout << "info";
-                if (controller->elapsed_time>300) std::cout << " nps " <<
+                globals::output() << "info";
+                if (controller->elapsed_time>300) globals::output() << " nps " <<
                                                       (long)((1000L*total_nodes)/controller->elapsed_time);
-                std::cout << " nodes " << total_nodes << " hashfull " << controller->hashTable.pctFull() << std::endl;
+                globals::output() << " nodes " << total_nodes << " hashfull " << controller->hashTable.pctFull() << std::endl;
                 controller->last_time = current_time;
             }
         }
@@ -971,25 +971,25 @@ void Search::showStatus(const Board &b, Move best, bool faillow,
     controller->updateGlobalStats(stats);
     if (talkLevel == TalkLevel::Test) {
         // This is the output for the "test" command in verbose mode
-        std::ios_base::fmtflags original_flags = std::cout.flags();
-        std::cout.setf(std::ios::fixed);
-        std::cout << std::setprecision(2);
-        std::cout << ply << '\t';
-        std::cout << controller->elapsed_time/1000.0 << '\t';
+        std::ios_base::fmtflags original_flags = globals::output().flags();
+        globals::output().setf(std::ios::fixed);
+        globals::output() << std::setprecision(2);
+        globals::output() << ply << '\t';
+        globals::output() << controller->elapsed_time/1000.0 << '\t';
         if (faillow) {
-            std::cout << " --";
+            globals::output() << " --";
         }
         else if (best != NullMove) {
-            Notation::image(b, best, Notation::OutputFormat::SAN,std::cout);
-            if (failhigh) std::cout << '!';
+            Notation::image(b, best, Notation::OutputFormat::SAN,globals::output());
+            if (failhigh) globals::output() << '!';
         }
-        std::cout << '\t';
-        Scoring::printScore(stats.display_value,std::cout);
+        globals::output() << '\t';
+        Scoring::printScore(stats.display_value,globals::output());
         // Note: must access controller's stats to get node count
         // across all threads:
         uint64_t num_nodes = controller->getGlobalStats().num_nodes;
-        std::cout << '\t' << num_nodes << std::endl;
-        std::cout.flags(original_flags);
+        globals::output() << '\t' << num_nodes << std::endl;
+        globals::output().flags(original_flags);
     }
     // Post during ponder if UCI
     if ((!controller->background || controller->uci) && controller->post_function) {
@@ -1007,9 +1007,9 @@ score_t Search::tbScoreAdjust(const Board &b,
 {
 #ifdef SEARCH_TRACE
    if (mainThread()) {
-      std::cout << "tb score adjust: input=";
-      Scoring::printScore(tb_score,std::cout);
-      std::cout << std::endl;
+      globals::output() << "tb score adjust: input=";
+      Scoring::printScore(tb_score,globals::output());
+      globals::output() << std::endl;
    }
 #endif
    score_t output = value;
@@ -1029,9 +1029,9 @@ score_t Search::tbScoreAdjust(const Board &b,
    }
 #ifdef SEARCH_TRACE
    if (mainThread()) {
-      std::cout << "tb score adjust: output=";
-      Scoring::printScore(output,std::cout);
-      std::cout << std::endl;
+      globals::output() << "tb score adjust: output=";
+      Scoring::printScore(output,globals::output());
+      globals::output() << std::endl;
    }
 #endif
    return output;
@@ -1111,13 +1111,13 @@ void Search::updateStats(const Board &b, NodeInfo *n, int iteration_depth,
     // note: retain previous best line if we do not have one here
     if (n->pv_length == 0) {
 #ifdef SEARCH_TRACE
-        if (mainThread()) std::cout << "warning: pv length is zero." << std::endl;;
+        if (mainThread()) globals::output() << "warning: pv length is zero." << std::endl;;
 #endif
         return;
     }
     else if (IsNull(n->pv[0])) {
 #ifdef SEARCH_TRACE
-        if (mainThread()) std::cout << "warning: pv is null." << std::endl;;
+        if (mainThread()) globals::output() << "warning: pv is null." << std::endl;;
 #endif
         return;
     }
@@ -1222,25 +1222,25 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
             hi_window = std::min<score_t>(Constants::MATE,value + aspirationWindow/2);
          }
          if (mainThread() && debugOut() && controller->background) {
-             std::cout << globals::debugPrefix;
+             globals::output() << globals::debugPrefix;
              if (srcOpts.multipv > 1) {
-                 std::cout << " multipv=" << stats.multipv_count << ": ";
+                 globals::output() << " multipv=" << stats.multipv_count << ": ";
              }
-             std::cout << iterationDepth << ". move=";
-             MoveImage(node->best,std::cout); std::cout << " score=";
-             Scoring::printScore(node->best_score,std::cout);
-             std::cout << " terminate=" << terminate << std::endl;
+             globals::output() << iterationDepth << ". move=";
+             MoveImage(node->best,globals::output()); globals::output() << " score=";
+             Scoring::printScore(node->best_score,globals::output());
+             globals::output() << " terminate=" << terminate << std::endl;
          }
          int fails = 0;
          do {
             stats.failHigh = stats.failLow = false;
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-               std::cout << "iteration " << iterationDepth << " window = [";
-               Scoring::printScore(lo_window,std::cout);
-               std::cout << ',';
-               Scoring::printScore(hi_window,std::cout);
-               std::cout << ']' << std::endl;
+               globals::output() << "iteration " << iterationDepth << " window = [";
+               Scoring::printScore(lo_window,globals::output());
+               globals::output() << ',';
+               Scoring::printScore(hi_window,globals::output());
+               globals::output() << ']' << std::endl;
             }
 #endif
             value = ply0_search(mg, lo_window, hi_window,
@@ -1255,11 +1255,11 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
             }
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-               std::cout << "iteration " << iterationDepth << " raw result: ";
-               Scoring::printScore(stats.value,std::cout);
-               std::cout << " corrected result: ";
-               Scoring::printScore(stats.display_value,std::cout);
-               std::cout << std::endl;
+               globals::output() << "iteration " << iterationDepth << " raw result: ";
+               Scoring::printScore(stats.value,globals::output());
+               globals::output() << " corrected result: ";
+               Scoring::printScore(stats.display_value,globals::output());
+               globals::output() << std::endl;
             }
 #endif
             StateType &state = stats.state;
@@ -1267,7 +1267,7 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
                 break;
             }
             else if (!terminate && (state == Checkmate || state == Stalemate)) {
-                std::cout << globals::debugPrefix << "terminating due to checkmate or statemate, state="
+                globals::output() << globals::debugPrefix << "terminating due to checkmate or statemate, state="
                           << (int)state << std::endl;
                 controller->terminateNow();
                 break;
@@ -1293,14 +1293,14 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
                         showStatus(board, node->best, stats.failLow, stats.failHigh);
                     }
                     if (debugOut()) {
-                        std::cout << globals::debugPrefix << "ply 0 fail high, re-searching ... value=";
-                        Scoring::printScore(value,std::cout);
-                        std::cout << " fails=" << fails+1 << std::endl;
+                        globals::output() << globals::debugPrefix << "ply 0 fail high, re-searching ... value=";
+                        Scoring::printScore(value,globals::output());
+                        globals::output() << " fails=" << fails+1 << std::endl;
                     }
 #ifdef SEARCH_TRACE
-                    std::cout << globals::debugPrefix << "ply 0 high cutoff, re-searching ... value=";
-                    Scoring::printScore(value,std::cout);
-                    std::cout << " fails=" << fails+1 << std::endl;
+                    globals::output() << globals::debugPrefix << "ply 0 high cutoff, re-searching ... value=";
+                    Scoring::printScore(value,globals::output());
+                    globals::output() << " fails=" << fails+1 << std::endl;
 #endif
                 }
                 if (fails+1 >= ASPIRATION_WINDOW_STEPS) {
@@ -1326,14 +1326,14 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
                         showStatus(board, node->best, stats.failLow, stats.failHigh);
                     }
                     if (debugOut()) {
-                        std::cout << globals::debugPrefix << "ply 0 fail low, re-searching ... value=";
-                        Scoring::printScore(value,std::cout);
-                        std::cout << " fails=" << fails+1 << std::endl;
+                        globals::output() << globals::debugPrefix << "ply 0 fail low, re-searching ... value=";
+                        Scoring::printScore(value,globals::output());
+                        globals::output() << " fails=" << fails+1 << std::endl;
                     }
 #ifdef SEARCH_TRACE
-                    std::cout << globals::debugPrefix << "ply 0 fail low, re-searching ... value=";
-                    Scoring::printScore(value,std::cout);
-                    std::cout << " fails=" << fails+1 << std::endl;
+                    globals::output() << globals::debugPrefix << "ply 0 fail low, re-searching ... value=";
+                    Scoring::printScore(value,globals::output());
+                    globals::output() << " fails=" << fails+1 << std::endl;
 #endif
                 }
                 // continue loop with lower bound
@@ -1341,7 +1341,7 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
                     // TBD: Sometimes we can fail low after a bunch of fail highs. Allow the
                     // search to continue, but set the lower bound to the bottom of the range.
                     if (mainThread() && debugOut()) {
-                        std::cout << globals::debugPrefix << "too many aspiration window steps, setting window to max width" << std::endl;
+                        globals::output() << globals::debugPrefix << "too many aspiration window steps, setting window to max width" << std::endl;
                     }
                     aspirationWindow = Constants::MATE;
                 }
@@ -1369,7 +1369,7 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
             // allow time-based exit without one completed iteration though.
             if (checkTime()) {
                 if (debugOut()) {
-                    std::cout << globals::debugPrefix << "time up" << std::endl;
+                    globals::output() << globals::debugPrefix << "time up" << std::endl;
                 }
                 controller->terminateNow();
             }
@@ -1379,7 +1379,7 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
              controller->timeCheckInterval = controller->computeTimeCheckInterval(stats.num_nodes);
          }
          if (debugOut() && !terminate && mainThread() && controller->elapsed_time > 100) {
-             std::cout << globals::debugPrefix << "elapsed time=" << controller->elapsed_time << " time check interval=" <<
+             globals::output() << globals::debugPrefix << "elapsed time=" << controller->elapsed_time << " time check interval=" <<
                  controller->timeCheckInterval << std::endl;
          }
          // Search value should now be in bounds (unless we are terminating)
@@ -1394,7 +1394,7 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
              iterationDepth >= 2 &&
              !(globals::options.search.can_resign && stats.display_value <= srcOpts.resign_threshold)) {
              if (mainThread() && debugOut()) {
-                 std::cout << globals::debugPrefix << "single legal move, terminating" << std::endl;
+                 globals::output() << globals::debugPrefix << "single legal move, terminating" << std::endl;
              }
              controller->terminateNow();
          }
@@ -1406,7 +1406,7 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
                 controller->applySearchHistoryFactors();
                 /*
                 if (debugOut() && (controller->searchHistoryBoostFactor != 0 || controller->searchHistoryReductionFactor !=0)) {
-                    std::cout << globals::debugPrefix << "searchHistoryBoostFactor=" << controller->searchHistoryBoostFactor <<
+                    globals::output() << globals::debugPrefix << "searchHistoryBoostFactor=" << controller->searchHistoryBoostFactor <<
                         " searchHistoryReductionFactor=" << controller->searchHistoryReductionFactor << std::endl;
                 }
                 */
@@ -1426,11 +1426,11 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
             }
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-               std::cout << iterationDepth << " ply search result: ";
-               MoveImage(node->best,std::cout);
-               std::cout << " value = ";
-               Scoring::printScore(value,std::cout);
-               std::cout << std::endl;
+               globals::output() << iterationDepth << " ply search result: ";
+               MoveImage(node->best,globals::output());
+               globals::output() << " value = ";
+               Scoring::printScore(value,globals::output());
+               globals::output() << std::endl;
             }
 #endif
             if (!controller->uci || controller->typeOfSearch == TimeLimit) {
@@ -1439,21 +1439,21 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
                 if (value <= nominalDepth - Constants::MATE && !IsNull(stats.best_line[0])) {
                     // We're either checkmated or we certainly will be, so
                     // quit searching.
-                    if (mainThread() && debugOut()) std::cout << globals::debugPrefix << "terminating, low score" << std::endl;
+                    if (mainThread() && debugOut()) globals::output() << globals::debugPrefix << "terminating, low score" << std::endl;
 #ifdef SEARCH_TRACE
-                    std::cout << "terminating, low score" << std::endl;
+                    globals::output() << "terminating, low score" << std::endl;
 #endif
                     controller->terminateNow();
                }
                else if (value >= Constants::MATE - nominalDepth - 1 && iterationDepth>=2) {
                    // found a forced mate, terminate
                    if (mainThread() && debugOut()) {
-                       std::cout << globals::debugPrefix << "terminating, high score" << std::endl;
+                       globals::output() << globals::debugPrefix << "terminating, high score" << std::endl;
                    }
 #ifdef SEARCH_TRACE
                    if (mainThread()) {
-                       std::cout << "terminating, high score" << std::endl;
-                       std::cout << "nominalDepth=" << nominalDepth << " value=" << value << " mate threshold=" << Constants::MATE - nominalDepth - 1 << std::endl;
+                       globals::output() << "terminating, high score" << std::endl;
+                       globals::output() << "nominalDepth=" << nominalDepth << " value=" << value << " mate threshold=" << Constants::MATE - nominalDepth - 1 << std::endl;
                    }
 #endif
                    controller->terminateNow();
@@ -1489,11 +1489,11 @@ Move Search::ply0_search(RootMoveGenerator::RootMoveList *moveList)
    controller->pool->unlock();
    if (mainThread() && debugOut()) {
        if (iterationDepth >= controller->ply_limit) {
-           std::cout << globals::debugPrefix << "exiting search due to max depth" << std::endl;
+           globals::output() << globals::debugPrefix << "exiting search due to max depth" << std::endl;
        }
-       std::cout << globals::debugPrefix << "out of search loop, move= ";
-       MoveImage(node->best,std::cout);
-       std::cout << std::endl << std::flush;
+       globals::output() << globals::debugPrefix << "out of search loop, move= ";
+       MoveImage(node->best,globals::output());
+       globals::output() << std::endl << std::flush;
    }
    return node->best;
 }
@@ -1579,10 +1579,10 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
         }
 #ifdef SEARCH_TRACE
         if (mainThread()) {
-            std::cout << globals::debugPrefix << "trying 0. ";
-           MoveImage(move,std::cout);
-           std::cout << " (" << move_index << "/" << mg.moveCount();
-           std::cout << ")" << std::endl;
+            globals::output() << globals::debugPrefix << "trying 0. ";
+           MoveImage(move,globals::output());
+           globals::output() << " (" << move_index << "/" << mg.moveCount();
+           globals::output() << ")" << std::endl;
         }
 #endif
         CheckStatusType in_check_after_move = board.wouldCheck(move);
@@ -1598,7 +1598,7 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
         score_t lobound = wide ? node->alpha : node->best_score;
 #ifdef SEARCH_TRACE
         if (mainThread()) {
-           std::cout << "window [" << -hibound << ", " << -lobound <<
+           globals::output() << "window [" << -hibound << ", " << -lobound <<
               "]" << std::endl;
         }
 #endif
@@ -1615,9 +1615,9 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
         if (try_score > node->best_score && reduction && !terminate) {
 #ifdef SEARCH_TRACE
            if (mainThread()) {
-              std::cout << "window = [" << -hibound << "," << -lobound
+              globals::output() << "window = [" << -hibound << "," << -lobound
                    << "]" << std::endl;
-              std::cout << "score = " << try_score << " - LMR cutoff, researching .." << std::endl;
+              globals::output() << "score = " << try_score << " - LMR cutoff, researching .." << std::endl;
            }
 #endif
            // We failed to get a cutoff, so re-search with no reduction.
@@ -1631,14 +1631,14 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
            if (mainThread() && controller->time_target != Constants::INFINITE_TIME) {
               controller->fail_high_root = true;
               if (debugOut()) {
-                  std::cout << globals::debugPrefix << "researching at root, extending time" << std::endl;
+                  globals::output() << globals::debugPrefix << "researching at root, extending time" << std::endl;
               }
            }
 #ifdef SEARCH_TRACE
            if (mainThread()) {
-              std::cout << "window = [" << -hibound << "," << -lobound
+              globals::output() << "window = [" << -hibound << "," << -lobound
                    << "]" << std::endl;
-              std::cout << "score = " << try_score << " - zero window cutoff, researching .." << std::endl;
+              globals::output() << "score = " << try_score << " - zero window cutoff, researching .." << std::endl;
            }
 #endif
            hibound = node->beta;
@@ -1649,10 +1649,10 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
         }
 #ifdef SEARCH_TRACE
         if (mainThread()) {
-            std::cout << globals::debugPrefix << "0. ";
-            MoveImage(move,std::cout);
-            std::cout << " (" << move_index << '/' << mg.moveCount() << ") ";
-            std::cout << try_score << std::endl;
+            globals::output() << globals::debugPrefix << "0. ";
+            MoveImage(move,globals::output());
+            globals::output() << " (" << move_index << '/' << mg.moveCount() << ") ";
+            globals::output() << try_score << std::endl;
         }
 #endif
         board.undoMove(move,save_state);
@@ -1672,7 +1672,7 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
         }
         if (mainThread()) {
            if (debugOut() && controller->fail_high_root) {
-               std::cout << globals::debugPrefix << "resetting fail_high_root" << std::endl;
+               globals::output() << globals::debugPrefix << "resetting fail_high_root" << std::endl;
            }
            controller->fail_high_root = false;
         }
@@ -1698,7 +1698,7 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
                       !terminate) {
                     auto thisWait = std::min<uint64_t>(waitTime,1000);
                     if (mainThread() && debugOut()) {
-                        std::cout << globals::debugPrefix << "index=" << move_index << " waiting for " << thisWait << " ms." << std::endl;
+                        globals::output() << globals::debugPrefix << "index=" << move_index << " waiting for " << thisWait << " ms." << std::endl;
                     }
                     std::this_thread::sleep_for(std::chrono::milliseconds(thisWait));
                     // check for input and update elapsed time
@@ -1726,7 +1726,7 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
             if (!srcOpts.multipv) stats.state = Stalemate;
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-               std::cout << "stalemate!" << std::endl;
+               globals::output() << "stalemate!" << std::endl;
             }
 #endif
             node->best_score = drawScore(board);
@@ -1749,7 +1749,7 @@ score_t Search::ply0_search(RootMoveGenerator &mg, score_t alpha, score_t beta,
 #ifdef _DEBUG
     if (node->best_score < -Constants::MATE ||
         node->best_score > Constants::MATE) {
-        std::cout << globals::debugPrefix << board << std::endl;
+        globals::output() << globals::debugPrefix << board << std::endl;
         assert(0);
     }
 #endif
@@ -1813,12 +1813,12 @@ void SearchController::getBestThreadStats(BestThreadResults &res, bool trace) co
         if (!pool->statsReady(thread)) continue;
         Statistics &threadStats = pool->data[thread]->work->stats;
         if (trace) {
-            std::cout << globals::debugPrefix << "thread " << thread << " depth=" <<
+            globals::output() << globals::debugPrefix << "thread " << thread << " depth=" <<
                 threadStats.completedDepth << " score=";
-            Scoring::printScore(threadStats.display_value,std::cout);
-            std::cout << " failHigh=" << (int)threadStats.failHigh << " failLow=" <<
+            Scoring::printScore(threadStats.display_value,globals::output());
+            globals::output() << " failHigh=" << (int)threadStats.failHigh << " failLow=" <<
                 (int)threadStats.failLow;
-            std::cout << " pv=" << threadStats.best_line_image << std::endl;
+            globals::output() << " pv=" << threadStats.best_line_image << std::endl;
         }
         if (!IsNull(threadStats.best_line[0])) {
             if (IsNull(bestStats->best_line[0]) ||
@@ -1908,21 +1908,21 @@ bool SearchController::suboptimal(Statistics *bestStats, const Search *bestSearc
     }
     std::vector<int> candidates;
     if (debugOut()) {
-        std::cout << globals::debugPrefix << "suboptimal: r=" << r << " p=" << p << " tolerance=" << tolerance << " strategy=" << strategy << std::endl;
+        globals::output() << globals::debugPrefix << "suboptimal: r=" << r << " p=" << p << " tolerance=" << tolerance << " strategy=" << strategy << std::endl;
     }
     for (int i = start; i < std::min<int>(n-1,start+5); ++i) {
         const RootMoveGenerator::RootMove &rm = rootMoves[i];
         if (debugOut()) {
             std::string move_image;
             Notation::image(initialBoard,rm.move,Notation::OutputFormat::SAN,move_image);
-            std::cout << globals::debugPrefix << "suboptimal: move = " << move_image << ", diff = " << best-rm.score << std::endl;
+            globals::output() << globals::debugPrefix << "suboptimal: move = " << move_image << ", diff = " << best-rm.score << std::endl;
         }
         // when strength < 50, sometimes allow moves worse than the tolerance value
         if (r >= 2*y && (best - rm.score > tolerance)) break;
         candidates.push_back(i);
     }
     if (debugOut()) {
-        std::cout << globals::debugPrefix << "suboptimal: " << candidates.size() << " candidate(s)" << std::endl;
+        globals::output() << globals::debugPrefix << "suboptimal: " << candidates.size() << " candidate(s)" << std::endl;
     }
     if (candidates.size() == 0) return false;
     else if (candidates.size() == 1) substitute = rootMoves[candidates[0]];
@@ -1940,7 +1940,7 @@ bool SearchController::suboptimal(Statistics *bestStats, const Search *bestSearc
         bestStats->best_line_image = move_image;
         bestStats->display_value = bestStats->value = substitute.score;
         if (debugOut()) {
-            std::cout << globals::debugPrefix << "selected suboptimal move " << move_image << std::endl;
+            globals::output() << globals::debugPrefix << "selected suboptimal move " << move_image << std::endl;
         }
         return true;
     }
@@ -1954,7 +1954,7 @@ int SearchController::computeTimeCheckInterval(uint64_t num_nodes) const noexcep
 static void traceHash(char type, NodeInfo *node, score_t hashValue, const HashEntry &hashEntry)
 {
     indent(node->ply);
-    std::cout << "hash cutoff, type = " << type <<
+    globals::output() << "hash cutoff, type = " << type <<
         " alpha = " << node->alpha <<
         " beta = " << node->beta <<
         " value = " << hashValue <<
@@ -1977,7 +1977,7 @@ score_t Search::quiesce(int ply,int depth)
          controller->time_check_counter = controller->timeCheckInterval;
          if (checkTime()) {
             if (debugOut()) {
-                std::cout << globals::debugPrefix << "terminating, time up" << std::endl;
+                globals::output() << globals::debugPrefix << "terminating, time up" << std::endl;
             }
             controller->terminateNow();   // signal all searches to end
          }
@@ -1999,7 +1999,7 @@ score_t Search::quiesce(int ply,int depth)
    else if (Scoring::isDraw(board,rep_count,ply)) {
 #ifdef SEARCH_TRACE
       if (mainThread()) {
-         indent(ply); std::cout << "draw!" << std::endl;
+         indent(ply); globals::output() << "draw!" << std::endl;
       }
 #endif
       node->flags |= EXACT;
@@ -2017,7 +2017,7 @@ score_t Search::quiesce(int ply,int depth)
    }
 #ifdef SEARCH_TRACE
    if (mainThread()) {
-      indent(ply); std::cout << "window [" << node->alpha << ","
+      indent(ply); globals::output() << "window [" << node->alpha << ","
                         << node->beta << "]" << std::endl;
    }
 #endif
@@ -2072,7 +2072,7 @@ score_t Search::quiesce(int ply,int depth)
    if (inCheck) {
 #ifdef SEARCH_TRACE
        if (mainThread()) {
-           indent(ply); std::cout << "in_check=1" << std::endl;
+           indent(ply); globals::output() << "in_check=1" << std::endl;
        }
 #endif
        assert(board.anyAttacks(board.kingSquare(board.sideToMove()),board.oppositeSide()));
@@ -2089,7 +2089,7 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
                if (mainThread()) {
                    indent(ply);
-                   std::cout << "previous move illegal, exiting qsearch" << std::endl;
+                   globals::output() << "previous move illegal, exiting qsearch" << std::endl;
                }
 #endif
                return -Illegal;
@@ -2097,9 +2097,9 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
            if (mainThread()) {
                indent(ply);
-               std::cout << "trying " << ply << ". ";
-               MoveImage(move,std::cout);
-               std::cout << std::endl;
+               globals::output() << "trying " << ply << ". ";
+               MoveImage(move,globals::output());
+               globals::output() << std::endl;
            }
 #endif
            if (!pvSearch &&
@@ -2111,7 +2111,7 @@ score_t Search::quiesce(int ply,int depth)
                // and failed to cutoff. So don't search any more.
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                   indent(ply); std::cout << "pruned" << std::endl;
+                   indent(ply); globals::output() << "pruned" << std::endl;
                }
 #endif
                continue;
@@ -2129,9 +2129,9 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
                if (mainThread()) {
                    indent(ply);
-                   std::cout << ply << ". ";
-                   MoveImage(move,std::cout);
-                   std::cout << ' ' << try_score << std::endl;
+                   globals::output() << ply << ". ";
+                   MoveImage(move,globals::output());
+                   globals::output() << ' ' << try_score << std::endl;
                }
 #endif
                node->num_legal++;
@@ -2148,9 +2148,9 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
            else if (mainThread()) {
                indent(ply);
-               std::cout << ply << ". ";
-               MoveImage(move,std::cout);
-               std::cout << " (illegal)" << std::endl;
+               globals::output() << ply << ". ";
+               MoveImage(move,globals::output());
+               globals::output() << " (illegal)" << std::endl;
            }
 #endif
        }
@@ -2161,7 +2161,7 @@ score_t Search::quiesce(int ply,int depth)
            } else {
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                   indent(ply); std::cout << "checkmate!" << std::endl;
+                   indent(ply); globals::output() << "checkmate!" << std::endl;
                }
 #endif
                node->best_score = -(Constants::MATE - ply);
@@ -2171,7 +2171,7 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef _DEBUG
        if (node->best_score < -Constants::MATE ||
            node->best_score > Constants::MATE) {
-           std::cout << globals::debugPrefix << board << std::endl;
+           globals::output() << globals::debugPrefix << board << std::endl;
            assert(0);
        }
 #endif
@@ -2210,7 +2210,7 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
        if (mainThread()) {
            indent(ply);
-           std::cout << "stand pat score = " << node->eval << std::endl;
+           globals::output() << "stand pat score = " << node->eval << std::endl;
        }
 #endif
        node->best_score = node->alpha;
@@ -2220,7 +2220,7 @@ score_t Search::quiesce(int ply,int depth)
            if (node->eval >= node->beta) {
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                   indent(ply); std::cout << "**CUTOFF**" << std::endl;
+                   indent(ply); globals::output() << "**CUTOFF**" << std::endl;
                }
 #endif
                assert(!board.anyAttacks(board.kingSquare(board.oppositeSide()),board.sideToMove()));
@@ -2248,7 +2248,7 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
                if (mainThread()) {
                    indent(ply);
-                   std::cout << "previous move illegal, exiting qsearch" << std::endl;
+                   globals::output() << "previous move illegal, exiting qsearch" << std::endl;
                }
 #endif
                return -Illegal;
@@ -2256,9 +2256,9 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
            if (mainThread()) {
                indent(ply);
-               std::cout << "trying " << ply << ". ";
-               MoveImage(move,std::cout);
-               std::cout << std::endl;
+               globals::output() << "trying " << ply << ". ";
+               MoveImage(move,globals::output());
+               globals::output() << std::endl;
            }
 #endif
            if (!IsPromotion(move) &&
@@ -2270,7 +2270,7 @@ score_t Search::quiesce(int ply,int depth)
                    !board.wouldCheck(move)) {
 #ifdef SEARCH_TRACE
                    if (mainThread()) {
-                       indent(ply); std::cout << "pruned (futility)" << std::endl;
+                       indent(ply); globals::output() << "pruned (futility)" << std::endl;
                    }
 #endif
                    continue;
@@ -2281,7 +2281,7 @@ score_t Search::quiesce(int ply,int depth)
                    !seeSign(board,move,std::max<score_t>(0,neededGain))){
 #ifdef SEARCH_TRACE
                    if (mainThread()) {
-                       indent(ply); std::cout << "pruned (SEE)" << std::endl;
+                       indent(ply); globals::output() << "pruned (SEE)" << std::endl;
                    }
 
 #endif
@@ -2301,9 +2301,9 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
                if (mainThread()) {
                    indent(ply);
-                   std::cout << ply << ". ";
-                   MoveImage(move,std::cout);
-                   std::cout << ' ' << try_score << std::endl;
+                   globals::output() << ply << ". ";
+                   MoveImage(move,globals::output());
+                   globals::output() << ' ' << try_score << std::endl;
                }
 #endif
                if (try_score > node->best_score) {
@@ -2313,7 +2313,7 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
                        if (mainThread()) {
                            indent(ply);
-                           std::cout << "**CUTOFF**" << std::endl;
+                           globals::output() << "**CUTOFF**" << std::endl;
                        }
 #endif
                        goto search_end;
@@ -2325,9 +2325,9 @@ score_t Search::quiesce(int ply,int depth)
 #ifdef SEARCH_TRACE
            else if (mainThread()) {
                indent(ply);
-               std::cout << ply << ". ";
-               MoveImage(move,std::cout);
-               std::cout << " (illegal)" << std::endl;
+               globals::output() << ply << ". ";
+               MoveImage(move,globals::output());
+               globals::output() << " (illegal)" << std::endl;
            }
 #endif
        }
@@ -2377,7 +2377,7 @@ bool Search::prune(const Board &b,
 #endif
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(n->ply); std::cout << "LMP: pruned" << std::endl;
+                    indent(n->ply); globals::output() << "LMP: pruned" << std::endl;
                 }
 #endif
                 return true;
@@ -2389,7 +2389,7 @@ bool Search::prune(const Board &b,
                 context.getFuHistory(n,m) < historyPruningThreshold(improving)) {
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(n->ply); std::cout << "history: pruned" << std::endl;
+                    indent(n->ply); globals::output() << "history: pruned" << std::endl;
                 }
 #endif
 #ifdef SEARCH_STATS
@@ -2412,7 +2412,7 @@ bool Search::prune(const Board &b,
 #endif
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
-                        indent(n->ply); std::cout << "futility: pruned" << std::endl;
+                        indent(n->ply); globals::output() << "futility: pruned" << std::endl;
                     }
 #endif
                     return true;
@@ -2430,7 +2430,7 @@ bool Search::prune(const Board &b,
 #endif
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
-                        indent(n->ply); std::cout << "futility (captures): pruned" << std::endl;
+                        indent(n->ply); globals::output() << "futility (captures): pruned" << std::endl;
                     }
 #endif
                     return true;
@@ -2446,7 +2446,7 @@ bool Search::prune(const Board &b,
 #endif
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(n->ply); std::cout << "SEE: pruned" << std::endl;
+                    indent(n->ply); globals::output() << "SEE: pruned" << std::endl;
                 }
 #endif
                 return true;
@@ -2561,7 +2561,7 @@ score_t Search::search()
             controller->time_check_counter = controller->timeCheckInterval;
             if (checkTime()) {
                if (debugOut()) {
-                   std::cout << globals::debugPrefix << "terminating, time up" << std::endl;
+                   globals::output() << globals::debugPrefix << "terminating, time up" << std::endl;
                }
                controller->terminateNow();   // signal all searches to end
             }
@@ -2584,7 +2584,7 @@ score_t Search::search()
         }
 #ifdef SEARCH_TRACE
         if (mainThread()) {
-            indent(ply); std::cout << "draw!" << std::endl;
+            indent(ply); globals::output() << "draw!" << std::endl;
         }
 #endif
         return drawScore(board);
@@ -2651,16 +2651,16 @@ score_t Search::search()
               }
 #ifdef _DEBUG
               if (!IsNull(hashMove) && !legalMove(board,hashMove)) {
-                  std::cout << board << std::endl << std::flush;
-                  MoveImage(hashMove,std::cout);
-                  std::cout << std::endl << std::flush;
+                  globals::output() << board << std::endl << std::flush;
+                  MoveImage(hashMove,globals::output());
+                  globals::output() << std::endl << std::flush;
               }
 #endif
 #ifdef SEARCH_TRACE
              if (mainThread()) {
-                  indent(ply); std::cout << "best line[ply][ply] = ";
-                  MoveImage(hashMove,std::cout);
-                  std::cout << std::endl;
+                  indent(ply); globals::output() << "best line[ply][ply] = ";
+                  MoveImage(hashMove,globals::output());
+                  globals::output() << std::endl;
              }
 #endif
           }
@@ -2704,7 +2704,7 @@ score_t Search::search()
             stats.tb_hits++;
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-                indent(ply); std::cout << "EGTB hit: score " << tb_score << std::endl;
+                indent(ply); globals::output() << "EGTB hit: score " << tb_score << std::endl;
             }
 #endif
             // Put it in with a large depth so we will not
@@ -2729,15 +2729,15 @@ score_t Search::search()
         (board.checkStatus((node-1)->last_move) == InCheck);
 #ifdef _DEBUG
     if (in_check != board.inCheck()) {
-        std::cout << globals::debugPrefix << board << std::endl;
-        std::cout << globals::debugPrefix << "move=";
-	MoveImage((node-1)->last_move,std::cout);
-	std::cout << std::endl;
+        globals::output() << globals::debugPrefix << board << std::endl;
+        globals::output() << globals::debugPrefix << "move=";
+	MoveImage((node-1)->last_move,globals::output());
+	globals::output() << std::endl;
 	assert(0);
     }
 #endif
 #ifdef SEARCH_TRACE
-    if (mainThread() && in_check) { indent(ply); std::cout << "in_check=" << in_check << std::endl;}
+    if (mainThread() && in_check) { indent(ply); globals::output() << "in_check=" << in_check << std::endl;}
 #endif
     // Compute (if needed) and store the static evaluation for the current
     // position and also update node->eval with an improved evaluation
@@ -2789,7 +2789,7 @@ score_t Search::search()
         if (node->eval >= node->beta + margin) {
 #ifdef SEARCH_TRACE
            if (mainThread()) {
-              indent(ply); std::cout << "static null pruned" << std::endl;
+              indent(ply); globals::output() << "static null pruned" << std::endl;
            }
 #endif
 #ifdef SEARCH_STATS
@@ -2809,7 +2809,7 @@ score_t Search::search()
             score_t v = quiesce(node->alpha,node->beta,ply+1,0);
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-               indent(ply); std::cout << "razored node, score=" << v << std::endl;
+               indent(ply); globals::output() << "razored node, score=" << v << std::endl;
             }
 #endif
 #ifdef SEARCH_STATS
@@ -2853,7 +2853,7 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
             if (mainThread()) {
                 indent(ply);
-                std::cout << "trying " << ply << ". " << "(null)" << std::endl;
+                globals::output() << "trying " << ply << ". " << "(null)" << std::endl;
             }
 #endif
             board.doNull(node);
@@ -2867,7 +2867,7 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
             if (mainThread()) {
                 indent(ply);
-                std::cout << ply << ". " << "(null)" << ' ' << nscore << std::endl;
+                globals::output() << ply << ". " << "(null)" << ' ' << nscore << std::endl;
             }
 #endif
             board.undoNull(state);
@@ -2883,7 +2883,7 @@ score_t Search::search()
                     // (idea from Dieter Buerssner)
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
-                       indent(ply); std::cout << "verifying null move" << std::endl;
+                       indent(ply); globals::output() << "verifying null move" << std::endl;
                     }
 #endif
                     // entering a new node w/o a move, so reset next node state
@@ -2892,7 +2892,7 @@ score_t Search::search()
                     if (nscore == -Illegal) {
 #ifdef SEARCH_TRACE
                        if (mainThread()) {
-                          indent(ply); std::cout << "previous move illegal" << std::endl;
+                          indent(ply); globals::output() << "previous move illegal" << std::endl;
                        }
 #endif
                        return -Illegal;
@@ -2901,10 +2901,10 @@ score_t Search::search()
                     if (mainThread()) {
                         indent(ply);
                         if (nscore>=node->beta)
-                            std::cout << "null cutoff verified, score=" << nscore;
+                            globals::output() << "null cutoff verified, score=" << nscore;
                         else
-                            std::cout << "null cutoff not verified";
-                        std::cout << std::endl;
+                            globals::output() << "null cutoff not verified";
+                        globals::output() << std::endl;
                     }
 #endif
                 }
@@ -2912,7 +2912,7 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
                          indent(ply);
-                         std::cout << "**CUTOFF**" << std::endl;
+                         globals::output() << "**CUTOFF**" << std::endl;
                     }
 #endif
 #ifdef SEARCH_STATS
@@ -2938,7 +2938,7 @@ score_t Search::search()
         if (!(validHashValue && result == HashEntry::UpperBound && hashValue < probcut_beta)) {
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-                indent(ply); std::cout << "Probcut" << std::endl;
+                indent(ply); globals::output() << "Probcut" << std::endl;
             }
 #endif
             const score_t needed_gain = probcut_beta - node->staticEval;
@@ -2952,7 +2952,7 @@ score_t Search::search()
                 if (Capture(move)==King) {
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
-                        std::cout << "Probcut: previous move illegal" << std::endl;
+                        globals::output() << "Probcut: previous move illegal" << std::endl;
                     }
 #endif
                     return -Illegal;                  // previous move was illegal
@@ -2961,9 +2961,9 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
                         indent(ply);
-                        std::cout << "Probcut: trying " << ply << ". ";
-                        MoveImage(move,std::cout);
-                        std::cout << std::endl;
+                        globals::output() << "Probcut: trying " << ply << ". ";
+                        MoveImage(move,globals::output());
+                        globals::output() << std::endl;
                     }
 #endif
                     SetPhase(move,MoveGenerator::WINNING_CAPTURE_PHASE);
@@ -2979,9 +2979,9 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
                         indent(ply);
-                        std::cout << ply << ". ";
-                        MoveImage(move,std::cout);
-                        std::cout << " " << value << std::endl;
+                        globals::output() << ply << ". ";
+                        MoveImage(move,globals::output());
+                        globals::output() << " " << value << std::endl;
                     }
 #endif
                     board.undoMove(move,state);
@@ -2989,7 +2989,7 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
                         if (mainThread()) {
                             indent(ply);
-                            std::cout << "Probcut: cutoff" << std::endl;
+                            globals::output() << "Probcut: cutoff" << std::endl;
                         }
 #endif
                         // store ProbCut result if there is not already a hash entry with
@@ -3011,7 +3011,7 @@ score_t Search::search()
             }
 #ifdef SEARCH_TRACE
             if (mainThread()) {
-                indent(ply); std::cout << "out of Probcut" << std::endl;
+                indent(ply); globals::output() << "out of Probcut" << std::endl;
             }
 #endif
         }
@@ -3025,7 +3025,7 @@ score_t Search::search()
         const int d = depth - IIDDepth(node->PV()) + DEPTH_INCREMENT;
 #ifdef SEARCH_TRACE
         if (mainThread()) {
-            indent(ply); std::cout << "== start IID, depth = " << d
+            indent(ply); globals::output() << "== start IID, depth = " << d
                 << std::endl;
         }
 #endif
@@ -3047,7 +3047,7 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
             if (mainThread()) {
                 indent(ply);
-                std::cout << "== exact result from IID" << std::endl;
+                globals::output() << "== exact result from IID" << std::endl;
             }
 #endif
             return iid_score;
@@ -3057,17 +3057,17 @@ score_t Search::search()
         }
 #ifdef SEARCH_TRACE
         if (mainThread()) {
-            indent(ply); std::cout << "== IID done.";
+            indent(ply); globals::output() << "== IID done.";
         }
 #endif
 
 #ifdef SEARCH_TRACE
         if (mainThread()) {
             if (!IsNull(hashMove)) {
-                indent(ply); std::cout << "  hashMove = ";
-                MoveImage(hashMove,std::cout);
+                indent(ply); globals::output() << "  hashMove = ";
+                MoveImage(hashMove,globals::output());
             }
-            std::cout << std::endl;
+            globals::output() << std::endl;
         }
 #endif
         if (iid_score <= node->alpha && node->eval > node->alpha) { // upper bound
@@ -3108,7 +3108,7 @@ score_t Search::search()
 #endif
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(ply); std::cout << "begin singular search" << std::endl;
+                    indent(ply); globals::output() << "begin singular search" << std::endl;
                 }
 #endif
                 NodeState ns(node);
@@ -3117,13 +3117,13 @@ score_t Search::search()
                 score_t singularResult = search(nu_beta-1,nu_beta,node->ply+1,singularSearchDepth(depth),CutNode,0,hashMove);
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(ply); std::cout << "end singular search" << std::endl;
+                    indent(ply); globals::output() << "end singular search" << std::endl;
                 }
 #endif
                 if (singularResult < nu_beta) {
 #ifdef SEARCH_TRACE
                     if (mainThread()) {
-                        indent(ply); std::cout << "singular extension" << std::endl;
+                        indent(ply); globals::output() << "singular extension" << std::endl;
                     }
 #endif
                     // extend an amount that depends on how singular the move is, as in Halogen &
@@ -3180,18 +3180,18 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
             if (mainThread()) {
                 indent(ply);
-                std::cout << "trying " << ply << ". ";
-                MoveImage(move,std::cout);
-               if (first) std::cout << "(pv)";
-                std::cout << " [" << node->best_score << "," << hibound << "]";
-                std::cout << " d:" << depth << std::endl;
+                globals::output() << "trying " << ply << ". ";
+                MoveImage(move,globals::output());
+               if (first) globals::output() << "(pv)";
+                globals::output() << " [" << node->best_score << "," << hibound << "]";
+                globals::output() << " d:" << depth << std::endl;
             }
 #endif
             if (Capture(move)==King) {
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
                      indent(ply);
-                     std::cout << "king capture, previous move illegal" << std::endl;
+                     globals::output() << "king capture, previous move illegal" << std::endl;
                 }
 #endif
                 return -Illegal;                  // previous move was illegal
@@ -3228,7 +3228,7 @@ score_t Search::search()
                assert(board.anyAttacks(board.kingSquare(board.oppositeSide()),board.sideToMove()));
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                  indent(ply); std::cout << "Illegal move!" << std::endl;
+                  indent(ply); globals::output() << "Illegal move!" << std::endl;
                }
 #endif
                board.undoMove(move,state);
@@ -3255,7 +3255,7 @@ score_t Search::search()
             if (try_score == Illegal) {
 #if defined(SEARCH_TRACE)
                 if (mainThread()) {
-                    indent(ply); std::cout << "Illegal move" << std::endl;
+                    indent(ply); globals::output() << "Illegal move" << std::endl;
                 }
 #endif
                 board.undoMove(move,state);
@@ -3266,10 +3266,10 @@ score_t Search::search()
                // We failed to get a cutoff and must re-search
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                  indent(ply); std::cout << ply << ". ";
-                  MoveImage(move,std::cout);
-                  std::cout << " score = " << try_score << " - no cutoff, researching .." << std::endl;
-                    indent(ply); std::cout << "window = [" << node->best_score << "," << hibound << "]" << std::endl;
+                  indent(ply); globals::output() << ply << ". ";
+                  MoveImage(move,globals::output());
+                  globals::output() << " score = " << try_score << " - no cutoff, researching .." << std::endl;
+                    indent(ply); globals::output() << "window = [" << node->best_score << "," << hibound << "]" << std::endl;
                }
 #endif
                // re-search with no reduction
@@ -3283,10 +3283,10 @@ score_t Search::search()
                hibound = node->beta;
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                  indent(ply); std::cout << ply << ". ";
-                  MoveImage(move,std::cout);
-                  std::cout << " score = " << try_score << " - no cutoff, researching .." << std::endl;
-                    indent(ply); std::cout << "window = [" << node->best_score << "," << hibound << "]" << std::endl;
+                  indent(ply); globals::output() << ply << ". ";
+                  MoveImage(move,globals::output());
+                  globals::output() << " score = " << try_score << " - no cutoff, researching .." << std::endl;
+                    indent(ply); globals::output() << "window = [" << node->best_score << "," << hibound << "]" << std::endl;
                }
 #endif
                // Research sets a wider window, so is treated as a Pv node.
@@ -3299,18 +3299,18 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
             if (mainThread()) {
                 indent(ply);
-                std::cout << ply << ". ";
-                MoveImage(move,std::cout);
-                std::cout << ' ' << try_score;
-                if (first) std::cout << " (pv)";
-                std::cout << std::endl;
+                globals::output() << ply << ". ";
+                MoveImage(move,globals::output());
+                globals::output() << ' ' << try_score;
+                if (first) globals::output() << " (pv)";
+                globals::output() << std::endl;
             }
             first = 0;
 #endif
             if (terminate) {
 #ifdef SEARCH_TRACE
                if (mainThread()) {
-                  indent(ply); std::cout << "terminating" << std::endl;
+                  indent(ply); globals::output() << "terminating" << std::endl;
                }
 #endif
                break;
@@ -3329,7 +3329,7 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
         if (node->best_score >= node->beta && mainThread()) {
             indent(ply);
-            std::cout << "**CUTOFF**" << std::endl;
+            globals::output() << "**CUTOFF**" << std::endl;
         }
 #endif
         if (terminate) {
@@ -3341,7 +3341,7 @@ score_t Search::search()
             if (in_check) {
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(ply); std::cout << "mate" << std::endl;
+                    indent(ply); globals::output() << "mate" << std::endl;
                 }
 #endif
                 node->best_score = -(Constants::MATE - ply);
@@ -3351,7 +3351,7 @@ score_t Search::search()
             else {                                // stalemate
 #ifdef SEARCH_TRACE
                 if (mainThread()) {
-                    indent(ply); std::cout << "stalemate!" << std::endl;
+                    indent(ply); globals::output() << "stalemate!" << std::endl;
                 }
 #endif
                 node->best_score = drawScore(board);
@@ -3417,11 +3417,11 @@ score_t Search::search()
 #ifdef SEARCH_TRACE
         if (mainThread()) {
             indent(ply);
-            std::cout << "storing type=" << typeChar <<
+            globals::output() << "storing type=" << typeChar <<
                 " ply=" << ply << " depth=" << depth << " value=" << value <<
                 " move=";
-            MoveImage(node->best,std::cout);
-            std::cout << std::endl;
+            MoveImage(node->best,globals::output());
+            globals::output() << std::endl;
         }
 #endif
         const hash_t hashCode = board.hashCode(rep_count);
@@ -3461,7 +3461,7 @@ int Search::updateRootMove(const Board &b,
       if (score >= n->beta) {
 #ifdef SEARCH_TRACE
          if (mainThread()) {
-             std::cout << "ply 0 beta cutoff" << std::endl;
+             globals::output() << "ply 0 beta cutoff" << std::endl;
          }
 #endif
          // set pv to this move so it is searched first the next time
@@ -3473,9 +3473,9 @@ int Search::updateRootMove(const Board &b,
                      n->best_score);
          if (mainThread()) {
             if (controller->uci && !srcOpts.multipv) {
-               std::cout << "info score ";
-               Scoring::printScoreUCI(score,std::cout);
-               std::cout << " lowerbound" << std::endl;
+               globals::output() << "info score ";
+               Scoring::printScoreUCI(score,globals::output());
+               globals::output() << " lowerbound" << std::endl;
             }
          }
          return 1;  // signal cutoff

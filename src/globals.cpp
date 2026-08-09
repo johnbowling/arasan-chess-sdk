@@ -60,6 +60,9 @@ bool globals::polling_terminated;
 std::string globals::debugPrefix;
 nnue::Network globals::network;
 bool globals::nnueInitDone = false;
+const char *globals::DEFAULT_NETWORK_NAME = MAKE_STR(NETWORK);
+
+static std::ostream *engineOutput = &std::cout;
 
 #ifdef _WIN32
 static const char *LEARN_FILE_NAME = "arasan.lrn";
@@ -142,21 +145,31 @@ std::string globals::appendPath(const std::string &base, const std::string &file
     return dir;
 }
 
-bool globals::initGlobals() {
+std::ostream &globals::output() {
+    return *engineOutput;
+}
+
+void globals::setOutput(std::ostream *stream) {
+    engineOutput = stream != nullptr ? stream : &std::cout;
+}
+
+bool globals::initGlobals(bool configureProcess) {
 #ifndef _WIN32
-    struct rlimit rl;
-    const rlim_t STACK_MAX = static_cast<rlim_t>(LINUX_STACK_SIZE);
-    auto result = getrlimit(RLIMIT_STACK, &rl);
-    if (result == 0)
-    {
-        if (rl.rlim_cur < STACK_MAX)
+    if (configureProcess) {
+        struct rlimit rl;
+        const rlim_t STACK_MAX = static_cast<rlim_t>(LINUX_STACK_SIZE);
+        auto result = getrlimit(RLIMIT_STACK, &rl);
+        if (result == 0)
         {
-            rl.rlim_cur = STACK_MAX;
-            result = setrlimit(RLIMIT_STACK, &rl);
-            if (result)
+            if (rl.rlim_cur < STACK_MAX)
             {
-                std::cerr << "failed to increase stack size" << std::endl;
-                exit(-1);
+                rl.rlim_cur = STACK_MAX;
+                result = setrlimit(RLIMIT_STACK, &rl);
+                if (result)
+                {
+                    std::cerr << "failed to increase stack size" << std::endl;
+                    return false;
+                }
             }
         }
     }
@@ -189,10 +202,13 @@ bool globals::loadNetwork(const std::string &fname, bool verbose) {
 void CDECL globals::cleanupGlobals(void) {
     if (openingBook.is_open()) openingBook.close();
     delete gameMoves;
+    gameMoves = nullptr;
     BitUtils::cleanup();
     Board::cleanup();
     if (game_file.is_open()) game_file.close();
     delete eco;
+    eco = nullptr;
+    nnueInitDone = false;
 }
 
 bool globals::initOptions(bool autoLoadRC, const char *rcPath,

@@ -14,6 +14,7 @@
 #include "nnue/nnue.h"
 
 #include <fstream>
+#include <iostream>
 #include <mutex>
 #include <string>
 
@@ -45,7 +46,6 @@ extern std::string debugPrefix;
 extern CACHE_ALIGN const uint8_t baseKPKW[24576];
 extern CACHE_ALIGN const uint8_t baseKPKB[24576];
 
-#include <iostream>
 #ifdef _THREAD_TRACE
 #include <cstdio>
 #endif
@@ -62,9 +62,16 @@ extern std::string derivePath(const std::string &fileName);
 extern std::string derivePath(const std::string &base, const std::string &fileName);
 extern std::string appendPath(const std::string &base, const std::string &fileName);
 
+// Engine protocol output defaults to std::cout. Embedded hosts can provide a
+// dedicated stream without replacing the process-wide stdout stream buffer.
+extern std::ostream &output();
+extern void setOutput(std::ostream *stream);
+
 extern bool loadNetwork(const std::string &filename, bool verbose);
 
-extern bool initGlobals();
+// Process configuration includes the desktop stack-limit adjustment. Embedded
+// hosts disable it to avoid mutating their containing application.
+extern bool initGlobals(bool configureProcess = true);
 
 extern void initGameFile();
 

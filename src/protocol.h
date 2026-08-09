@@ -17,9 +17,14 @@
 class Protocol {
 
 public:
-    Protocol(const Board &,bool traceOn, bool icsMode, bool cpus_set, bool memory_set);
+    Protocol(const Board &, bool traceOn, bool icsMode, bool cpus_set, bool memory_set,
+             bool pollProcessInput = true);
 
     virtual ~Protocol();
+
+    // Submit a command without reading process stdin. Commands sent during a
+    // search are consumed by the existing search monitor.
+    bool dispatchCommand(const std::string &cmd);
 
     // read input from stdin and dispatch commands
     void poll(bool &terminated);
@@ -218,6 +223,7 @@ private:
     bool ponderhit;
     // set true if waiting for "ponderhit" or "stop"
     bool uciWaitState;
+    bool pollProcessInput;
     std::string test_file;
     bool cpusSet; // true if cmd line specifies -c
     bool memorySet; // true if cmd line specifies -H
