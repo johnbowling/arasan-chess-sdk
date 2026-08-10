@@ -54,23 +54,59 @@ jobs:
           python3 -m http.server 4173 --bind 127.0.0.1 --directory dist/wasm \
             >"${RUNNER_TEMP}/arasan-http.log" 2>&1 &
           server_pid=$!
-          trap 'kill "${server_pid}"' EXIT
+          "${CHROMEWEBDRIVER}/chromedriver" \
+            --port=9515 \
+            --log-path="${RUNNER_TEMP}/chromedriver.log" &
+          driver_pid=$!
+          session_id=""
+          cleanup() {
+            if [[ -n "${session_id}" ]]; then
+              curl --silent --request DELETE \
+                "http://127.0.0.1:9515/session/${session_id}" >/dev/null || true
+            fi
+            kill "${driver_pid}" "${server_pid}" 2>/dev/null || true
+          }
+          trap cleanup EXIT
           for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:4173/test/ >/dev/null; then
+            if curl --fail --silent http://127.0.0.1:4173/test/ >/dev/null && \
+               curl --fail --silent http://127.0.0.1:9515/status >/dev/null; then
               break
             fi
             sleep 1
           done
-          browser_bin="$(command -v chromium || command -v google-chrome)"
-          timeout 120s "${browser_bin}" \
-            --headless=new \
-            --disable-gpu \
-            --no-sandbox \
-            --virtual-time-budget=120000 \
-            --dump-dom \
-            http://127.0.0.1:4173/test/ \
-            >"${RUNNER_TEMP}/arasan-smoke.html"
-          grep 'data-test-status="passed"' "${RUNNER_TEMP}/arasan-smoke.html"
+          session_response="$(curl --fail --silent \
+            --header 'Content-Type: application/json' \
+            --request POST \
+            --data '{"capabilities":{"alwaysMatch":{"browserName":"chrome","goog:chromeOptions":{"args":["--headless=new","--disable-gpu","--no-sandbox"]}}}}' \
+            http://127.0.0.1:9515/session)"
+          session_id="$(jq --raw-output '.value.sessionId' <<<"${session_response}")"
+          curl --fail --silent \
+            --header 'Content-Type: application/json' \
+            --request POST \
+            --data '{"url":"http://127.0.0.1:4173/test/"}' \
+            "http://127.0.0.1:9515/session/${session_id}/url" >/dev/null
+          test_status=""
+          for attempt in {1..120}; do
+            test_status="$(curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --request POST \
+              --data '{"script":"return document.documentElement.dataset.testStatus || null;","args":[]}' \
+              "http://127.0.0.1:9515/session/${session_id}/execute/sync" | \
+              jq --raw-output '.value // empty')"
+            if [[ -n "${test_status}" ]]; then
+              break
+            fi
+            sleep 1
+          done
+          if [[ "${test_status}" != "passed" ]]; then
+            curl --fail --silent \
+              --header 'Content-Type: application/json' \
+              --request POST \
+              --data '{"script":"return document.body.innerText;","args":[]}' \
+              "http://127.0.0.1:9515/session/${session_id}/execute/sync" | \
+              jq --raw-output '.value'
+            exit 1
+          fi
 
       - name: Upload package
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
