@@ -1,6 +1,6 @@
 # Arasan embedding fork
 
-This repository is a neutral integration fork of
+`arasan-chess-sdk` is a neutral integration fork of
 [`jdart1/arasan-chess`](https://github.com/jdart1/arasan-chess). Its purpose is
 to make Arasan straightforward to embed in applications on Apple platforms,
 Android, and the web without coupling the engine to any one product or UI.
