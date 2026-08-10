@@ -50,6 +50,15 @@ a Web Worker. Worker input and output are plain JavaScript strings. See
 [WASM.md](WASM.md) for the build, artifact contract, browser test, and required
 restart-based cancellation behavior.
 
+## Apple host
+
+The Apple target packages the common C interface as a static XCFramework with
+arm64 device and arm64/x86_64 simulator slices. Its public module imports
+directly into Swift as `ArasanEngine`. The network is a separate, checksummed
+application resource, and the host passes its bundle resource directory to
+initialization. See [APPLE.md](APPLE.md) for the build, artifact layout, Swift
+acceptance application, and integration contract.
+
 ## Native build and smoke test
 
 Initialize the required Syzygy source submodule, then build the command-line and
@@ -79,11 +88,13 @@ local proof artifacts, not consumer releases.
 
 ## Current limitations
 
-- Apple XCFramework and Android shared-library/AAR targets have not been added
-  yet.
+- Android shared-library/AAR targets have not been added yet.
+- The Apple device slice is compiled in CI, while physical-device execution
+  remains a release-validation step requiring a signed host application.
 - The Makefile does not generate header dependencies, so use a clean build after
   changing a public header or build configuration.
-- The WebAssembly package is an integration artifact, not yet a signed release.
-- Native platform consumers and release automation do not exist yet.
+- The WebAssembly and Apple packages are integration artifacts, not yet signed
+  releases.
+- Android consumers and release automation do not exist yet.
 - This first host has a single global engine because Arasan itself has global
   engine state.

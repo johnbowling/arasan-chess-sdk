@@ -33,6 +33,8 @@ fonts, and tablebase data are not part of the embedded distribution.
 
 The WebAssembly package renames the unchanged network payload to
 `arasan.nnue`. Its package manifest must retain the same byte size and SHA-256.
+The Apple package uses the same name, byte size, and checksum and carries the
+network as an explicit application resource beside the XCFramework.
 
 For reference, the upstream `book/book.bin` file at this commit has SHA-256
 `21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209`,
@@ -50,3 +52,12 @@ The first clean build was reproduced on Apple Silicon with:
 The upstream Makefile requires `BUILD_TYPE=neon` on ARM64. The unchanged
 command-line engine completed `uci`, `isready`, and `go movetime 100`, returning
 a legal `bestmove`.
+
+The Apple SDK baseline was reproduced with the same Xcode installation and iOS
+26.5 SDK at a minimum deployment target of iOS 16.0. It produced:
+
+- an arm64 iOS device static library;
+- arm64 and x86_64 iOS simulator static libraries;
+- a combined XCFramework with a Swift-importable C module; and
+- a successful arm64 simulator run covering UCI readiness, MultiPV, bounded and
+  cancelled searches, shutdown, and reinitialization.

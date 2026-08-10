@@ -10,7 +10,7 @@
 #endif
 #include "bitbase.cpp"
 
-#ifdef _MAC
+#if defined(_MAC) && !defined(ARASAN_EMBED_APPLE)
 extern "C" {
 #include <libproc.h>
 };
@@ -100,9 +100,9 @@ static bool absolutePath(const std::string &fileName) {
 //
 static void getExecutablePath(std::string &path) {
     path = "";
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || defined(ARASAN_EMBED_APPLE)
     // Embedded browser hosts provide resources explicitly. There is no
-    // meaningful executable path in the Emscripten virtual filesystem.
+    // portable executable path for Emscripten or sandboxed Apple hosts.
     return;
 #elif defined(_WIN32)
     TCHAR szPath[MAX_PATH];

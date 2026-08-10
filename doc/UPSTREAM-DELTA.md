@@ -16,6 +16,8 @@ It should be updated whenever the integration branch changes.
 | Web portability | Disables stdin polling, process path discovery, process stack tuning, and extra search threads under Emscripten | Matches the single-threaded Worker runtime and browser sandbox | Medium; browser-specific policy |
 | Optional tablebases | Guards CECP tablebase options when Syzygy is not compiled | Allows deliberately tablebase-free targets to link cleanly | High; generic optional-feature correctness |
 | Web package | Adds Emscripten exports, raw UCI Worker glue, demo, smoke suite, manifest, and CI | Produces a reproducible browser integration artifact | Low; maintained downstream platform distribution |
+| Apple portability | Avoids executable-path discovery in the sandboxed embedded Apple target | Makes the host-provided resource directory authoritative without changing macOS CLI behavior | Medium; useful for Apple embedding, but platform-policy specific |
+| Apple package | Adds device/simulator CMake builds, XCFramework assembly, Swift module metadata, smoke app, manifest, and CI | Produces a reproducible iOS integration artifact | Low; maintained downstream platform distribution |
 | Documentation | Adds fork, provenance, embedding, and delta documents | Makes source and artifacts reproducible | High |
 
 No engine evaluation, search, or strength code is intentionally changed. No
