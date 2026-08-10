@@ -1,0 +1,96 @@
+name: Android
+
+on:
+  push:
+    branches: [main, "platform/android-*", "automation/upstream-*"]
+    paths:
+      - ".github/workflows/android.yml"
+      - "cmake/**"
+      - "doc/**"
+      - "network/**"
+      - "platforms/android/**"
+      - "sdk/upstream.json"
+      - "src/**"
+  pull_request:
+    paths:
+      - ".github/workflows/android.yml"
+      - "cmake/**"
+      - "doc/**"
+      - "network/**"
+      - "platforms/android/**"
+      - "sdk/upstream.json"
+      - "src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Read pinned Android versions
+        id: versions
+        shell: bash
+        run: |
+          properties="platforms/android/gradle.properties"
+          read_property() {
+            sed -n "s/^$1=//p" "${properties}"
+          }
+          echo "gradle=$(read_property arasanGradleVersion)" >> "${GITHUB_OUTPUT}"
+          echo "compile-sdk=$(read_property arasanCompileSdk)" >> "${GITHUB_OUTPUT}"
+          echo "ndk=$(read_property arasanNdkVersion)" >> "${GITHUB_OUTPUT}"
+          echo "cmake=$(read_property arasanCmakeVersion)" >> "${GITHUB_OUTPUT}"
+          echo "emulator-api=$(read_property arasanEmulatorApi)" >> "${GITHUB_OUTPUT}"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@4c125117fe7c5aed11272ec4213f602f012f89f2 # v5
+        with:
+          gradle-version: ${{ steps.versions.outputs.gradle }}
+
+      - name: Install pinned Android build tools
+        shell: bash
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager \
+            "platforms;android-${{ steps.versions.outputs.compile-sdk }}" \
+            "build-tools;${{ steps.versions.outputs.compile-sdk }}.0.0" \
+            "ndk;${{ steps.versions.outputs.ndk }}" \
+            "cmake;${{ steps.versions.outputs.cmake }}"
+
+      - name: Build and package AAR
+        shell: bash
+        run: ./platforms/android/build.sh
+
+      - name: Run emulator smoke suite
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: ${{ steps.versions.outputs.emulator-api }}
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          disable-animations: true
+          emulator-options: >-
+            -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+            -camera-back none
+          script: ./platforms/android/run-smoke.sh
+
+      - name: Upload package
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-chess-sdk-android
+          path: dist/android
+          if-no-files-found: error
+          retention-days: 14

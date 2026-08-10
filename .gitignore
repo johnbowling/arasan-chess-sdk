@@ -4,3 +4,6 @@
 /profile/
 /release/
 /dist/
+/platforms/android/.gradle/
+/platforms/android/local.properties
+/platforms/android/*/build/

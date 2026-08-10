@@ -59,6 +59,15 @@ application resource, and the host passes its bundle resource directory to
 initialization. See [APPLE.md](APPLE.md) for the build, artifact layout, Swift
 acceptance application, and integration contract.
 
+## Android host
+
+The Android target packages the common C interface into a shared library and
+wraps it with the small Java `org.arasanchess.sdk.ArasanEngine` API. The AAR
+contains ARM64 device and x86_64 emulator libraries. Its Java host verifies and
+copies the packaged network to app-private storage before initialization. See
+[ANDROID.md](ANDROID.md) for the build, artifact layout, emulator acceptance
+application, and integration contract.
+
 ## Native build and smoke test
 
 Initialize the required Syzygy source submodule, then build the command-line and
@@ -88,13 +97,13 @@ local proof artifacts, not consumer releases.
 
 ## Current limitations
 
-- Android shared-library/AAR targets have not been added yet.
 - The Apple device slice is compiled in CI, while physical-device execution
   remains a release-validation step requiring a signed host application.
+- The Android ARM64 library is compiled in CI, while physical-device execution
+  remains a release-validation step requiring a consumer application.
 - The Makefile does not generate header dependencies, so use a clean build after
   changing a public header or build configuration.
-- The WebAssembly and Apple packages are integration artifacts, not yet signed
-  releases.
-- Android consumers and release automation do not exist yet.
+- The WebAssembly, Apple, and Android packages are integration artifacts, not
+  yet signed releases.
 - This first host has a single global engine because Arasan itself has global
   engine state.
