@@ -6,7 +6,6 @@ if(NOT EMSCRIPTEN)
 endif()
 
 get_filename_component(ARASAN_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/../.." ABSOLUTE)
-set(ARASAN_EMBED_NETWORK arasan.nnue)
 include("${ARASAN_ROOT}/cmake/ArasanEmbedded.cmake")
 
 add_arasan_embedded_library(arasan_embed_wasm)

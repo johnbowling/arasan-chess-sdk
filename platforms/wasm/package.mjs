@@ -8,6 +8,7 @@ const platformDir = dirname(fileURLToPath(import.meta.url));
 const repoDir = resolve(platformDir, "../..");
 const buildDir = resolve(process.argv[2] ?? join(repoDir, "build/wasm"));
 const distDir = resolve(process.argv[3] ?? join(repoDir, "dist/wasm"));
+const upstream = JSON.parse(await readFile(join(repoDir, "sdk/upstream.json"), "utf8"));
 
 if (!distDir.startsWith(`${repoDir}/dist/`)) {
     throw new Error(`refusing to replace a package outside ${join(repoDir, "dist")}`);
@@ -20,7 +21,7 @@ await mkdir(join(distDir, "test"), {recursive: true});
 const copies = [
     [join(buildDir, "arasan.js"), join(distDir, "arasan.js")],
     [join(buildDir, "arasan.wasm"), join(distDir, "arasan.wasm")],
-    [join(repoDir, "network/arasanv8-20260622.nnue"), join(distDir, "arasan.nnue")],
+    [join(repoDir, upstream.network.sourcePath), join(distDir, upstream.network.packagedName)],
     [join(platformDir, "arasan-worker.js"), join(distDir, "arasan-worker.js")],
     [join(platformDir, "demo/index.html"), join(distDir, "demo/index.html")],
     [join(platformDir, "demo/demo.js"), join(distDir, "demo/demo.js")],
@@ -35,7 +36,13 @@ for (const [source, destination] of copies) {
     await cp(source, destination);
 }
 
-const releaseFiles = ["arasan.js", "arasan.wasm", "arasan.nnue", "arasan-worker.js", "LICENSE"];
+const releaseFiles = [
+    "arasan.js",
+    "arasan.wasm",
+    upstream.network.packagedName,
+    "arasan-worker.js",
+    "LICENSE",
+];
 const files = {};
 for (const name of releaseFiles) {
     const path = join(distDir, name);
@@ -53,11 +60,11 @@ function command(program, args) {
 const manifest = {
     schemaVersion: 1,
     package: "arasan-chess-sdk-wasm",
-    engineVersion: "26.0",
+    engineVersion: upstream.engineVersion,
     upstream: {
-        repository: "https://github.com/jdart1/arasan-chess.git",
-        tag: "v26.0",
-        sourceCommit: "d8613aca11b3db15ce7f5c6d54da4dc4b31f63f8",
+        repository: upstream.repository,
+        tag: upstream.tag,
+        sourceCommit: upstream.sourceCommit,
     },
     fork: {
         repository: "https://github.com/johnbowling/arasan-chess-sdk.git",

@@ -1,6 +1,8 @@
 # Embedded distribution provenance
 
-This file records the inputs pinned for the Arasan 26.0 embedding line.
+This file explains the inputs pinned for the current embedding line. The
+machine-readable source of truth used by builds and update automation is
+[`sdk/upstream.json`](../sdk/upstream.json).
 
 ## Upstream source
 
@@ -38,7 +40,7 @@ For reference, the upstream `book/book.bin` file at this commit has SHA-256
 `21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209`,
 but embedded mode disables and does not package it.
 
-## Baseline reproduction
+## Original v26.0 baseline reproduction
 
 The first clean build was reproduced on Apple Silicon with:
 
