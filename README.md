@@ -4,7 +4,8 @@
 > while preserving Arasan's engine behavior and upstream identity. See
 > [FORK.md](FORK.md) for its scope and relationship to upstream. The original
 > Arasan documentation continues below. Web consumers can start with
-> [doc/WASM.md](doc/WASM.md).
+> [doc/WASM.md](doc/WASM.md), and iOS consumers with
+> [doc/APPLE.md](doc/APPLE.md).
 
 Arasan is a chess engine, that is, a console-based program that plays the game of chess.
 

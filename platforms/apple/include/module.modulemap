@@ -1,0 +1,4 @@
+module ArasanEngine {
+    umbrella header "arasan_embed.h"
+    export *
+}
