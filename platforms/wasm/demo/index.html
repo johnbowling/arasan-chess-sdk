@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Arasan WebAssembly UCI Harness</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <main>
+        <header>
+            <p class="eyebrow">arasan-chess-sdk / WebAssembly</p>
+            <h1>UCI Worker harness</h1>
+            <p class="lede">A static integration surface for exercising the engine in a browser Worker.</p>
+        </header>
+
+        <section class="controls" aria-labelledby="controls-heading">
+            <div>
+                <h2 id="controls-heading">Engine</h2>
+                <p id="status" class="status" role="status">Starting Worker…</p>
+            </div>
+            <div class="actions">
+                <button id="sample" type="button">Run sample analysis</button>
+                <button id="restart" class="secondary" type="button">Restart Worker</button>
+            </div>
+            <form id="command-form">
+                <label for="command">UCI command</label>
+                <div class="command-row">
+                    <input id="command" name="command" value="isready" autocomplete="off" spellcheck="false">
+                    <button type="submit">Send</button>
+                </div>
+            </form>
+        </section>
+
+        <section aria-labelledby="output-heading">
+            <div class="output-heading">
+                <h2 id="output-heading">Protocol output</h2>
+                <button id="clear" class="text-button" type="button">Clear</button>
+            </div>
+            <pre id="output" role="log" aria-live="polite" aria-relevant="additions"></pre>
+        </section>
+    </main>
+    <script src="demo.js"></script>
+</body>
+</html>

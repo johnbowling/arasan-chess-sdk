@@ -12,6 +12,10 @@ It should be updated whenever the integration branch changes.
 | C API | Adds the single-instance API in `src/embed` | Provides a stable primitive ABI for Swift, JNI/Dart FFI, and WASM | High; general embedding use |
 | Embedded profile | Disables book, ECO, tablebases, learning, and game storage by default | Avoids undeclared files and writes in app sandboxes | Medium; profile is policy-sensitive |
 | Native build | Adds static-library and smoke-test Make targets | Proves the common host before platform packaging | Medium |
+| Embedded CMake | Adds a reusable embedded-library source target | Gives platform builds an explicit target without changing the upstream CLI target | High; general build reuse |
+| Web portability | Disables stdin polling, process path discovery, process stack tuning, and extra search threads under Emscripten | Matches the single-threaded Worker runtime and browser sandbox | Medium; browser-specific policy |
+| Optional tablebases | Guards CECP tablebase options when Syzygy is not compiled | Allows deliberately tablebase-free targets to link cleanly | High; generic optional-feature correctness |
+| Web package | Adds Emscripten exports, raw UCI Worker glue, demo, smoke suite, manifest, and CI | Produces a reproducible browser integration artifact | Low; maintained downstream platform distribution |
 | Documentation | Adds fork, provenance, embedding, and delta documents | Makes source and artifacts reproducible | High |
 
 No engine evaluation, search, or strength code is intentionally changed. No

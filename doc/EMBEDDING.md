@@ -43,6 +43,13 @@ Embedded defaults are deliberately conservative:
 Consumers can change supported engine options with normal UCI `setoption`
 commands after initialization.
 
+## WebAssembly host
+
+The web target compiles the same C API and places a raw UCI adapter around it in
+a Web Worker. Worker input and output are plain JavaScript strings. See
+[WASM.md](WASM.md) for the build, artifact contract, browser test, and required
+restart-based cancellation behavior.
+
 ## Native build and smoke test
 
 Initialize the required Syzygy source submodule, then build the command-line and
@@ -72,10 +79,11 @@ local proof artifacts, not consumer releases.
 
 ## Current limitations
 
-- Apple XCFramework, Android shared-library/AAR, and Emscripten targets have not
-  been added yet.
+- Apple XCFramework and Android shared-library/AAR targets have not been added
+  yet.
 - The Makefile does not generate header dependencies, so use a clean build after
   changing a public header or build configuration.
-- Platform consumers and release automation do not exist yet.
+- The WebAssembly package is an integration artifact, not yet a signed release.
+- Native platform consumers and release automation do not exist yet.
 - This first host has a single global engine because Arasan itself has global
   engine state.

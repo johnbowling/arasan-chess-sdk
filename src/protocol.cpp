@@ -1555,13 +1555,16 @@ void Protocol::processWinboardOptions(const std::string &args) {
     if (doTrace) {
         globals::output() << debugPrefix << "setting option " << name << "=" << value << std::endl;
     }
+#ifdef SYZYGY_TBS
     if (name == "SyzygyUse50MoveRule") {
         Options::setOption<bool>(value,globals::options.search.syzygy_50_move_rule);
     }
     else if (name == "SyzygyProbeDepth") {
         Options::setOption<int>(value,globals::options.search.syzygy_probe_depth);
     }
-    else if (name == "OwnBook") {
+    else
+#endif
+    if (name == "OwnBook") {
         Options::setOption<bool>(value,globals::options.book.book_enabled);
     } else if (name == "BookPath") {
         Options::setOption<std::string>(value,globals::options.book.book_path);
@@ -1724,7 +1727,11 @@ bool Protocol::do_command(const std::string &cmd, Board &board) {
             globals::options.book.variety << " min 0 max 100" << std::endl;
         globals::output() << "option name Threads type spin default " <<
             globals::options.search.ncpus << " min 1 max " <<
+#ifdef __EMSCRIPTEN__
+            1 << std::endl;
+#else
             Constants::MaxCPUs << std::endl;
+#endif
         globals::output() << "option name Position learning type check default " <<
             (globals::options.learning.position_learning ? "true" : "false") << std::endl;
         globals::output() << "option name Learning file type string default " <<
@@ -1857,7 +1864,11 @@ bool Protocol::do_command(const std::string &cmd, Board &board) {
         }
         else if (uciOptionCompare(name,"Threads")) {
             int threads = globals::options.search.ncpus;
+#ifdef __EMSCRIPTEN__
+            if (Options::setOption<int>(value,threads) && threads == 1) {
+#else
             if (Options::setOption<int>(value,threads) && threads >0 && threads <= Constants::MaxCPUs) {
+#endif
                 globals::options.search.ncpus = threads;
                 searcher->setThreadCount(globals::options.search.ncpus);
             }
@@ -2406,10 +2417,10 @@ bool Protocol::do_command(const std::string &cmd, Board &board) {
         globals::output() << "feature name=1 setboard=1 san=1 usermove=1 ping=1 ics=1 playother=0 sigint=0 colors=0 analyze=1 debug=1 memory=1 smp=1 variants=\"normal\"";
 #ifdef SYZYGY_TBS
         globals::output() << " egt=\"syzygy\"";
-#endif
         globals::output() << " option=\"SyzygyUse50MoveRule -check " << globals::options.search.syzygy_50_move_rule << "\"";
         globals::output() << " option=\"SyzygyProbeDepth -spin " <<
             globals::options.search.syzygy_probe_depth << " 0 64" << "\"";
+#endif
         globals::output() << " option=\"OwnBook -check " <<
             globals::options.book.book_enabled << "\"";
         globals::output() << " option=\"BookPath -path " <<
@@ -2641,7 +2652,11 @@ bool Protocol::do_command(const std::string &cmd, Board &board) {
               if (doTrace) {
                  globals::output() << debugPrefix << "setting cores to " << globals::options.search.ncpus << std::endl;
               }
+#ifdef __EMSCRIPTEN__
+              globals::options.search.ncpus = 1;
+#else
               globals::options.search.ncpus = std::min<int>(globals::options.search.ncpus,Constants::MaxCPUs);
+#endif
               searcher->updateSearchOptions();
               searcher->setThreadCount(globals::options.search.ncpus);
            }

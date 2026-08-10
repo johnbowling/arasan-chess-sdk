@@ -11,12 +11,15 @@ semantics.
 
 ## Branch and release policy
 
-- `master` follows the fork's view of upstream development.
-- Integration branches such as `embed/v26.0` start at an exact upstream release
-  tag and contain the embedding delta for that release.
+- `main` is the maintained downstream SDK line. Its current engine baseline is
+  the exact upstream `v26.0` source commit recorded in provenance.
+- Short-lived branches such as `platform/wasm-v26.0` isolate reviewable SDK
+  increments before they merge into `main`.
 - Consumer releases will use immutable downstream tags such as
-  `v26.0-embed.1`, with checksums and build metadata.
+  `v26.0-sdk.1`, with checksums and build metadata.
 - The canonical upstream remote is `https://github.com/jdart1/arasan-chess.git`.
+- Upstream development is observed through the local `upstream/master` remote
+  tracking reference. The fork does not publish a redundant mirror branch.
 
 No upstream pull requests are planned during the initial implementation. Work
 is kept product-neutral and separated into reviewable changes so that generally
@@ -25,14 +28,15 @@ dependency of delivery.
 
 ## Current scope
 
-The first increment provides:
+The maintained SDK currently provides:
 
 - provenance for the upstream source and NNUE network;
 - a small, line-oriented C API around Arasan's existing UCI implementation;
 - explicit embedded resource paths and conservative embedded defaults;
 - a native static-library build and smoke test; and
+- a single-threaded, SIMD WebAssembly build with a raw UCI Worker host; and
 - unchanged command-line engine behavior.
 
-Platform artifact production is intentionally deferred to subsequent
-increments. See [doc/EMBEDDING.md](doc/EMBEDDING.md) and
+Apple and Android artifact production remain subsequent increments. See
+[doc/EMBEDDING.md](doc/EMBEDDING.md), [doc/WASM.md](doc/WASM.md), and
 [doc/UPSTREAM-DELTA.md](doc/UPSTREAM-DELTA.md).

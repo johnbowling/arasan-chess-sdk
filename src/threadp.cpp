@@ -156,7 +156,11 @@ ThreadInfo::ThreadInfo(ThreadPool *p, unsigned i)
 #ifdef _THREAD_TRACE
   log("starting",i);
 #endif
-#ifdef _WIN32
+#ifdef __EMSCRIPTEN__
+      // Browser builds are intentionally single-threaded. Thread zero is the
+      // caller's Worker thread, so no native thread handle is required.
+      assert(index == 0);
+#elif defined(_WIN32)
       DWORD id;
       if (index == 0) {
          thread_id = GetCurrentThread();
@@ -179,10 +183,15 @@ ThreadInfo::ThreadInfo(ThreadPool *p, unsigned i)
 }
 
 ThreadPool::ThreadPool(SearchController *ctrl, unsigned n) :
-    controller(ctrl), nThreads(n) {
+    controller(ctrl),
+#ifdef __EMSCRIPTEN__
+    nThreads(1) {
+#else
+    nThreads(n) {
+#endif
 
    data.fill(nullptr);
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
    if (pthread_attr_init (&stackSizeAttrib)) {
       perror("pthread_attr_init");
       return;
@@ -198,7 +207,7 @@ ThreadPool::ThreadPool(SearchController *ctrl, unsigned n) :
       }
    }
 #endif
-   for (unsigned i = 0; i < n; i++) {
+   for (unsigned i = 0; i < nThreads; i++) {
       ThreadInfo *p = data[i] = new ThreadInfo(this,i);
       if (i==0) {
          p->work = new Search(controller,p);
@@ -211,24 +220,24 @@ ThreadPool::ThreadPool(SearchController *ctrl, unsigned n) :
    }
    // Thread 0 (main thread) is always active:
    activeMask.set(0);
-   for (size_t i = 0; i < n; i++) {
+   for (size_t i = 0; i < nThreads; i++) {
        availableMask.set(i);
    }
    // Wait for all threads to start up
-   while (n >1) {
+   while (nThreads > 1) {
        unsigned cnt = 0;
-       for (unsigned i = 1; i < n; i++) {
+       for (unsigned i = 1; i < nThreads; i++) {
            if (data[i]->state == ThreadInfo::Idle) {
              ++cnt;
            }
        }
-       if (cnt==n-1) break;
+       if (cnt == nThreads - 1) break;
    }
 }
 
 ThreadPool::~ThreadPool() {
    shutDown();
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
    if (pthread_attr_destroy(&stackSizeAttrib)) {
       perror("pthread_attr_destroy");
    }
@@ -265,6 +274,9 @@ void ThreadPool::shutDown() {
 }
 
 void ThreadPool::resize(unsigned n) {
+#ifdef __EMSCRIPTEN__
+    n = 1;
+#endif
     if (n >= 1 && n < Constants::MaxCPUs && n != nThreads) {
         std::unique_lock<std::mutex> lock(poolLock);
         if (n>nThreads) {

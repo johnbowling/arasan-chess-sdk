@@ -1,0 +1,81 @@
+name: WebAssembly
+
+on:
+  push:
+    branches: [main, "platform/wasm-*"]
+    paths:
+      - ".github/workflows/wasm.yml"
+      - "cmake/**"
+      - "doc/**"
+      - "network/arasanv8-20260622.nnue"
+      - "platforms/wasm/**"
+      - "src/**"
+  pull_request:
+    paths:
+      - ".github/workflows/wasm.yml"
+      - "cmake/**"
+      - "doc/**"
+      - "network/arasanv8-20260622.nnue"
+      - "platforms/wasm/**"
+      - "src/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      EMSDK_VERSION: 6.0.6
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install pinned Emscripten SDK
+        shell: bash
+        run: |
+          git clone --depth 1 --branch "${EMSDK_VERSION}" \
+            https://github.com/emscripten-core/emsdk.git "${RUNNER_TEMP}/emsdk"
+          "${RUNNER_TEMP}/emsdk/emsdk" install "${EMSDK_VERSION}"
+          "${RUNNER_TEMP}/emsdk/emsdk" activate "${EMSDK_VERSION}"
+
+      - name: Build and package
+        shell: bash
+        run: |
+          source "${RUNNER_TEMP}/emsdk/emsdk_env.sh"
+          ./platforms/wasm/build.sh
+
+      - name: Run browser smoke suite
+        shell: bash
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory dist/wasm \
+            >"${RUNNER_TEMP}/arasan-http.log" 2>&1 &
+          server_pid=$!
+          trap 'kill "${server_pid}"' EXIT
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:4173/test/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          browser_bin="$(command -v chromium || command -v google-chrome)"
+          timeout 120s "${browser_bin}" \
+            --headless=new \
+            --disable-gpu \
+            --no-sandbox \
+            --virtual-time-budget=120000 \
+            --dump-dom \
+            http://127.0.0.1:4173/test/ \
+            >"${RUNNER_TEMP}/arasan-smoke.html"
+          grep 'data-test-status="passed"' "${RUNNER_TEMP}/arasan-smoke.html"
+
+      - name: Upload package
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-chess-sdk-wasm
+          path: dist/wasm
+          if-no-files-found: error
+          retention-days: 14

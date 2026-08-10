@@ -151,7 +151,7 @@ private:
    // mask of thread status - 0 if idle, 1 if active
    std::bitset<Constants::MaxCPUs> activeMask, availableMask, completedMask;
 
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
    pthread_attr_t stackSizeAttrib;
 #endif
 

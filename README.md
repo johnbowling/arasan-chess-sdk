@@ -3,7 +3,8 @@
 > This fork adds a general-purpose embedding interface and platform packaging
 > while preserving Arasan's engine behavior and upstream identity. See
 > [FORK.md](FORK.md) for its scope and relationship to upstream. The original
-> Arasan documentation continues below.
+> Arasan documentation continues below. Web consumers can start with
+> [doc/WASM.md](doc/WASM.md).
 
 Arasan is a chess engine, that is, a console-based program that plays the game of chess.
 

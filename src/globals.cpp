@@ -14,7 +14,7 @@
 extern "C" {
 #include <libproc.h>
 };
-#elif !defined(_MSC_VER)
+#elif !defined(_MSC_VER) && !defined(__EMSCRIPTEN__)
 // assume POSIX system
 extern "C" {
 #include <errno.h>
@@ -100,7 +100,11 @@ static bool absolutePath(const std::string &fileName) {
 //
 static void getExecutablePath(std::string &path) {
     path = "";
-#ifdef _WIN32
+#ifdef __EMSCRIPTEN__
+    // Embedded browser hosts provide resources explicitly. There is no
+    // meaningful executable path in the Emscripten virtual filesystem.
+    return;
+#elif defined(_WIN32)
     TCHAR szPath[MAX_PATH];
     if (GetModuleFileName(NULL, szPath, MAX_PATH)) {
         path = std::string(szPath);
@@ -154,7 +158,7 @@ void globals::setOutput(std::ostream *stream) {
 }
 
 bool globals::initGlobals(bool configureProcess) {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__EMSCRIPTEN__)
     if (configureProcess) {
         struct rlimit rl;
         const rlim_t STACK_MAX = static_cast<rlim_t>(LINUX_STACK_SIZE);
@@ -173,6 +177,9 @@ bool globals::initGlobals(bool configureProcess) {
             }
         }
     }
+#endif
+#ifdef __EMSCRIPTEN__
+    (void)configureProcess;
 #endif
     globals::gameMoves = new MoveArray();
     globals::eco = new ECO();

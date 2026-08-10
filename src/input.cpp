@@ -7,7 +7,8 @@
 #include <iostream>
 
 extern "C" {
-#ifdef _WIN32
+#if defined(__EMSCRIPTEN__)
+#elif defined(_WIN32)
 #include <windows.h>
 #include <io.h>
 #else
@@ -52,7 +53,11 @@ Input::Input()
 }
 
 bool Input::checkInput(std::vector<std::string> &cmds, std::mutex &mtx) {
-#ifdef _WIN32
+#ifdef __EMSCRIPTEN__
+    (void)cmds;
+    (void)mtx;
+    return false;
+#elif defined(_WIN32)
     DWORD nchar;
     if (PeekNamedPipe(GetStdHandle(STD_INPUT_HANDLE), NULL, 0,
                       NULL, &nchar, NULL)) {
@@ -104,7 +109,11 @@ bool Input::checkInput(std::vector<std::string> &cmds, std::mutex &mtx) {
 
 bool Input::readInput(std::vector<std::string> &cmds, std::mutex &mtx)
 {
-#ifdef _WIN32
+#ifdef __EMSCRIPTEN__
+    (void)cmds;
+    (void)mtx;
+    return false;
+#elif defined(_WIN32)
     BOOL bSuccess;
     DWORD dwRead;
     if (_isatty(_fileno(stdin))) {
@@ -125,6 +134,7 @@ bool Input::readInput(std::vector<std::string> &cmds, std::mutex &mtx)
         }
     }
 #endif
+#ifndef __EMSCRIPTEN__
     // Linux/Mac or non-console Windows code
     std::string cmd;
     if (std::getline(std::cin, cmd)) {
@@ -136,5 +146,5 @@ bool Input::readInput(std::vector<std::string> &cmds, std::mutex &mtx)
     } else {
         return false;
     }
+#endif
 }
-

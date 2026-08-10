@@ -10,7 +10,8 @@ This file records the inputs pinned for the Arasan 26.0 embedding line.
 | Upstream tag | `v26.0` |
 | Annotated tag object | `7482a6cc77f099d7d13421fdd0eb3ebfdf8829c6` |
 | Source commit | `d8613aca11b3db15ce7f5c6d54da4dc4b31f63f8` |
-| Integration branch | `embed/v26.0` |
+| Maintained branch | `main` |
+| Initial integration branch | `embed/v26.0` |
 
 The upstream `LICENSE` grants the MIT license for the source and the contents
 of the `network` directory. Redistributions must preserve its copyright and
@@ -27,6 +28,9 @@ permission notice.
 Embedded artifacts must use that file unless the engine version, manifest, and
 checksum are deliberately updated together. The opening book, GUI assets,
 fonts, and tablebase data are not part of the embedded distribution.
+
+The WebAssembly package renames the unchanged network payload to
+`arasan.nnue`. Its package manifest must retain the same byte size and SHA-256.
 
 For reference, the upstream `book/book.bin` file at this commit has SHA-256
 `21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209`,
