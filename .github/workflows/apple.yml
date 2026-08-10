@@ -50,8 +50,7 @@ jobs:
             echo "No available iPhone simulator" >&2
             exit 1
           fi
-          xcrun simctl boot "${simulator_id}" 2>/dev/null || true
-          xcrun simctl bootstatus "${simulator_id}" --block
+          xcrun simctl bootstatus "${simulator_id}" -b
           echo "id=${simulator_id}" >> "${GITHUB_OUTPUT}"
 
       - name: Run simulator smoke suite
