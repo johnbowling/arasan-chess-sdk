@@ -40,6 +40,10 @@ The package is written to `dist/apple`:
 - `manifest.json` records source/toolchain provenance and SHA-256 checksums.
 - `LICENSE` and `PROVENANCE.md` carry redistribution information.
 
+The engine version, upstream source revision, and required network filename are
+read from `sdk/upstream.json`. The automated stable-release updater changes that
+single baseline before rebuilding and validating this package.
+
 ## Host integration
 
 1. Add `Arasan.xcframework` to the application target.

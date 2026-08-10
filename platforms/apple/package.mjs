@@ -10,6 +10,7 @@ import { spawnSync } from "node:child_process";
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoDir = resolve(scriptDir, "../..");
 const [deviceInput, simulatorInput, distInput, deploymentTarget] = process.argv.slice(2);
+const upstream = JSON.parse(await readFile(join(repoDir, "sdk", "upstream.json"), "utf8"));
 
 if (!deviceInput || !simulatorInput || !distInput || !deploymentTarget) {
   console.error(
@@ -42,7 +43,10 @@ await mkdir(join(stagingDir, "resources"), { recursive: true });
 
 await cp(join(repoDir, "src", "embed", "arasan_embed.h"), join(stagingDir, "include", "arasan_embed.h"));
 await cp(join(scriptDir, "include", "module.modulemap"), join(stagingDir, "include", "module.modulemap"));
-await cp(join(repoDir, "network", "arasanv8-20260622.nnue"), join(stagingDir, "resources", "arasan.nnue"));
+await cp(
+  join(repoDir, upstream.network.sourcePath),
+  join(stagingDir, "resources", upstream.network.packagedName),
+);
 await cp(join(repoDir, "LICENSE"), join(stagingDir, "LICENSE"));
 await cp(join(repoDir, "doc", "APPLE.md"), join(stagingDir, "README.md"));
 await cp(join(repoDir, "doc", "PROVENANCE.md"), join(stagingDir, "PROVENANCE.md"));
@@ -107,11 +111,16 @@ const sourceStatus = spawnSync("git", ["-C", repoDir, "status", "--porcelain"], 
 const manifest = {
   formatVersion: 1,
   package: "arasan-chess-sdk-apple",
-  arasanVersion: "26.0",
+  arasanVersion: upstream.engineVersion,
   minimumIOSVersion: deploymentTarget,
-  networkFile: "resources/arasan.nnue",
+  networkFile: `resources/${upstream.network.packagedName}`,
+  upstream: {
+    repository: upstream.repository,
+    tag: upstream.tag,
+    sourceCommit: upstream.sourceCommit,
+  },
   source: {
-    repository: "https://github.com/johnbowling/arasan-chess-sdk",
+    repository: "https://github.com/johnbowling/arasan-chess-sdk.git",
     commit: sourceCommit,
     dirty: sourceStatus.length > 0,
   },

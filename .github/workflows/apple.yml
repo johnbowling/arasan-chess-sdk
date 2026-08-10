@@ -2,21 +2,23 @@ name: Apple
 
 on:
   push:
-    branches: [main, "platform/apple-*"]
+    branches: [main, "platform/apple-*", "automation/upstream-*"]
     paths:
       - ".github/workflows/apple.yml"
       - "cmake/**"
       - "doc/**"
-      - "network/arasanv8-20260622.nnue"
+      - "network/**"
       - "platforms/apple/**"
+      - "sdk/upstream.json"
       - "src/**"
   pull_request:
     paths:
       - ".github/workflows/apple.yml"
       - "cmake/**"
       - "doc/**"
-      - "network/arasanv8-20260622.nnue"
+      - "network/**"
       - "platforms/apple/**"
+      - "sdk/upstream.json"
       - "src/**"
   workflow_dispatch:
 
