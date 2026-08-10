@@ -72,7 +72,7 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    sourceSets.getByName("main").assets.srcDir(generatedAssetsDirectory)
+    sourceSets.getByName("main").assets.srcDir(generatedAssetsDirectory.get().asFile)
     androidResources {
         noCompress += "nnue"
     }
