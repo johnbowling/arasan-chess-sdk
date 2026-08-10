@@ -76,6 +76,10 @@ jobs:
         shell: bash
         run: ./platforms/android/build.sh
 
+      - name: Enable Android emulator acceleration
+        shell: bash
+        run: sudo chmod a+rw /dev/kvm
+
       - name: Run emulator smoke suite
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
