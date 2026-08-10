@@ -131,6 +131,14 @@ private func runEngineSmoke() throws {
     }
 }
 
+private func writeSmokeResult(_ result: String) {
+    let resultURL = FileManager.default.urls(
+        for: .documentDirectory,
+        in: .userDomainMask
+    )[0].appendingPathComponent("arasan-smoke-result.txt")
+    try? result.write(to: resultURL, atomically: true, encoding: .utf8)
+}
+
 @main
 final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -156,6 +164,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
         window.rootViewController = controller
         window.makeKeyAndVisible()
         self.window = window
+        writeSmokeResult("RUNNING")
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let result: String
@@ -167,11 +176,7 @@ final class AppDelegate: UIResponder, UIApplicationDelegate {
                 result = "FAIL: \(error)"
             }
 
-            let resultURL = FileManager.default.urls(
-                for: .documentDirectory,
-                in: .userDomainMask
-            )[0].appendingPathComponent("arasan-smoke-result.txt")
-            try? result.write(to: resultURL, atomically: true, encoding: .utf8)
+            writeSmokeResult(result)
             DispatchQueue.main.async {
                 self?.statusLabel.text = result
             }
