@@ -20,7 +20,7 @@ if ! adb get-state 2>/dev/null | grep -q '^device$'; then
     exit 1
 fi
 
-adb install --replace "${apk}" >/dev/null
+adb install -r "${apk}" >/dev/null
 
 run_cycle() {
     local cycle="$1"
