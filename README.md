@@ -6,7 +6,8 @@
 > Arasan documentation continues below. Web consumers can start with
 > [doc/WASM.md](doc/WASM.md), iOS consumers with
 > [doc/APPLE.md](doc/APPLE.md), and Android consumers with
-> [doc/ANDROID.md](doc/ANDROID.md).
+> [doc/ANDROID.md](doc/ANDROID.md). Cross-platform candidate assembly is
+> documented in [doc/RELEASES.md](doc/RELEASES.md).
 
 Arasan is a chess engine, that is, a console-based program that plays the game of chess.
 

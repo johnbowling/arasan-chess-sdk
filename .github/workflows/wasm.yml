@@ -1,6 +1,7 @@
 name: WebAssembly
 
 on:
+  workflow_call:
   push:
     branches: [main, "platform/wasm-*", "automation/upstream-*"]
     paths:

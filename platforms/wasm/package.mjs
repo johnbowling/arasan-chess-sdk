@@ -57,6 +57,7 @@ function command(program, args) {
     return execFileSync(program, args, {cwd: repoDir, encoding: "utf8"}).trim();
 }
 
+const sourceStatus = command("git", ["status", "--porcelain"]);
 const manifest = {
     schemaVersion: 1,
     package: "arasan-chess-sdk-wasm",
@@ -69,6 +70,7 @@ const manifest = {
     fork: {
         repository: "https://github.com/johnbowling/arasan-chess-sdk.git",
         sourceCommit: command("git", ["rev-parse", "HEAD"]),
+        dirty: sourceStatus.length > 0,
     },
     toolchain: command("emcc", ["--version"]).split("\n")[0],
     capabilities: {

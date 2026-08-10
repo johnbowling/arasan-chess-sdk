@@ -1,6 +1,7 @@
 name: Native
 
 on:
+  workflow_call:
   push:
     branches: [main, "update/arasan-*", "automation/upstream-*"]
     paths:

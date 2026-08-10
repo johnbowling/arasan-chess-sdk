@@ -1,0 +1,80 @@
+name: Release candidate
+
+on:
+  push:
+    branches: ["release/candidate-*"]
+    paths:
+      - ".github/workflows/**"
+      - "doc/RELEASES.md"
+      - "platforms/**"
+      - "scripts/release/**"
+      - "sdk/upstream.json"
+      - "src/**"
+  workflow_dispatch:
+    inputs:
+      candidate-version:
+        description: "Optional candidate label, for example v26.0-embed.1-rc.1"
+        required: false
+        type: string
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  native:
+    uses: ./.github/workflows/native.yml
+
+  apple:
+    uses: ./.github/workflows/apple.yml
+
+  android:
+    uses: ./.github/workflows/android.yml
+
+  wasm:
+    uses: ./.github/workflows/wasm.yml
+
+  assemble:
+    needs: [native, apple, android, wasm]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out candidate source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Download validated platform packages
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: arasan-chess-sdk-*
+          path: ${{ runner.temp }}/arasan-release-inputs
+
+      - name: Validate and assemble candidate
+        id: candidate
+        shell: bash
+        env:
+          REQUESTED_CANDIDATE_VERSION: ${{ inputs.candidate-version }}
+        run: |
+          node scripts/release/assemble.mjs \
+            "${RUNNER_TEMP}/arasan-release-inputs" \
+            dist/release-candidate \
+            "${REQUESTED_CANDIDATE_VERSION}"
+          version="$(jq --raw-output '.candidateVersion' \
+            dist/release-candidate/release-manifest.json)"
+          echo "version=${version}" >> "${GITHUB_OUTPUT}"
+          echo "Assembled ${version} from ${GITHUB_SHA}." >> "${GITHUB_STEP_SUMMARY}"
+          echo "This is a retained CI candidate only; no tag or release was created." >> \
+            "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload unified candidate
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-chess-sdk-release-candidate-${{ steps.candidate.outputs.version }}
+          path: dist/release-candidate
+          if-no-files-found: error
+          retention-days: 90
