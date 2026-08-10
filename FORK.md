@@ -16,7 +16,7 @@ semantics.
 - Short-lived branches such as `platform/wasm-v26.0` isolate reviewable SDK
   increments before they merge into `main`.
 - Consumer releases will use immutable downstream tags such as
-  `v26.0-sdk.1`, with checksums and build metadata.
+  `v26.0-embed.1`, with checksums and build metadata.
 - The canonical upstream remote is `https://github.com/jdart1/arasan-chess.git`.
 - Upstream development is observed through the local `upstream/master` remote
   tracking reference. The fork does not publish a redundant mirror branch.
@@ -45,4 +45,5 @@ See [doc/EMBEDDING.md](doc/EMBEDDING.md), [doc/APPLE.md](doc/APPLE.md),
 [doc/ANDROID.md](doc/ANDROID.md), [doc/WASM.md](doc/WASM.md), and
 [doc/UPSTREAM-DELTA.md](doc/UPSTREAM-DELTA.md).
 Stable upstream updates are handled by the lightweight process in
-[doc/UPSTREAM-UPDATES.md](doc/UPSTREAM-UPDATES.md).
+[doc/UPSTREAM-UPDATES.md](doc/UPSTREAM-UPDATES.md). Unified, non-publishing
+release candidates are documented in [doc/RELEASES.md](doc/RELEASES.md).

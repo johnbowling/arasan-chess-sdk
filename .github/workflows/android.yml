@@ -1,6 +1,7 @@
 name: Android
 
 on:
+  workflow_call:
   push:
     branches: [main, "platform/android-*", "automation/upstream-*"]
     paths:

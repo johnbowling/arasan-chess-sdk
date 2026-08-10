@@ -131,6 +131,11 @@ const manifest = {
     abis: properties.arasanAbis.split(","),
     networkAsset: networkEntry,
   },
+  network: {
+    file: upstream.network.packagedName,
+    bytes: upstream.network.bytes,
+    sha256: upstream.network.sha256,
+  },
   toolchain: {
     androidGradlePlugin: properties.arasanAgpVersion,
     gradle: properties.arasanGradleVersion,

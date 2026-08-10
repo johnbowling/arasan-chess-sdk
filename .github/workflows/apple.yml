@@ -1,6 +1,7 @@
 name: Apple
 
 on:
+  workflow_call:
   push:
     branches: [main, "platform/apple-*", "automation/upstream-*"]
     paths:
