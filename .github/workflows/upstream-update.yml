@@ -1,0 +1,137 @@
+name: Upstream update
+
+on:
+  schedule:
+    - cron: "23 14 * * 1"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Optional stable Arasan tag (for example v26.1)"
+        required: false
+        type: string
+
+concurrency:
+  group: upstream-update
+  cancel-in-progress: false
+
+permissions:
+  actions: write
+  contents: write
+  pull-requests: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REQUESTED_TAG: ${{ inputs.tag }}
+
+    steps:
+      - name: Check out SDK main
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          ref: main
+
+      - name: Preserve trusted update tools
+        shell: bash
+        run: cp --recursive scripts/upstream "${RUNNER_TEMP}/arasan-upstream-tools"
+
+      - name: Check for a stable upstream release
+        id: upstream
+        shell: bash
+        run: |
+          check_args=(--github-output "${GITHUB_OUTPUT}")
+          if [[ -n "${REQUESTED_TAG}" ]]; then
+            check_args+=(--tag "${REQUESTED_TAG}")
+          fi
+          node scripts/upstream/check.mjs "${check_args[@]}"
+
+      - name: Report current status
+        shell: bash
+        run: |
+          if [[ "${{ steps.upstream.outputs.update_available }}" == "true" ]]; then
+            echo "Arasan ${{ steps.upstream.outputs.latest_tag }} is ready to prepare." >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "No stable Arasan update is available; SDK remains on ${{ steps.upstream.outputs.current_tag }}." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Merge upstream tag and push candidate
+        if: steps.upstream.outputs.update_available == 'true'
+        id: candidate
+        shell: bash
+        env:
+          ARASAN_REPO_DIR: ${{ github.workspace }}
+          TARGET_TAG: ${{ steps.upstream.outputs.latest_tag }}
+        run: |
+          branch="update/arasan-${TARGET_TAG}"
+          echo "branch=${branch}" >> "${GITHUB_OUTPUT}"
+          if git ls-remote --exit-code --heads origin "refs/heads/${branch}" >/dev/null 2>&1; then
+            echo "created=false" >> "${GITHUB_OUTPUT}"
+            echo "ready=true" >> "${GITHUB_OUTPUT}"
+            echo "Candidate branch ${branch} already exists." >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+
+          upstream_repository="$(jq --raw-output '.repository' sdk/upstream.json)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add upstream "${upstream_repository}"
+          git fetch --no-tags upstream "refs/tags/${TARGET_TAG}:refs/tags/${TARGET_TAG}"
+          git switch --create "${branch}"
+          git merge --no-ff --no-edit "${TARGET_TAG}"
+          node "${RUNNER_TEMP}/arasan-upstream-tools/prepare.mjs" --tag "${TARGET_TAG}"
+          node "${RUNNER_TEMP}/arasan-upstream-tools/validate.mjs"
+          git add --all
+          git commit --message "chore: prepare Arasan ${TARGET_TAG} SDK update"
+          git push --set-upstream origin "${branch}"
+          echo "created=true" >> "${GITHUB_OUTPUT}"
+          echo "ready=true" >> "${GITHUB_OUTPUT}"
+
+      - name: Open draft update PR
+        if: steps.candidate.outputs.ready == 'true'
+        shell: bash
+        env:
+          BRANCH: ${{ steps.candidate.outputs.branch }}
+          TARGET_TAG: ${{ steps.upstream.outputs.latest_tag }}
+        run: |
+          existing_pr="$(gh pr list \
+            --repo "${GITHUB_REPOSITORY}" \
+            --head "${BRANCH}" \
+            --state open \
+            --json url \
+            --jq '.[0].url // empty')"
+          if [[ -n "${existing_pr}" ]]; then
+            echo "Existing update PR: ${existing_pr}" >> "${GITHUB_STEP_SUMMARY}"
+            exit 0
+          fi
+          body_file="$(mktemp)"
+          trap 'rm -f "${body_file}"' EXIT
+          {
+            echo "Automated merge of the stable upstream tag \`${TARGET_TAG}\`."
+            echo
+            echo "Merge this draft only after the dispatched Native and platform workflows are green."
+            echo "If anything is red, leave it alone until the failure is reviewed."
+            echo
+            echo "This PR targets only this SDK fork; it does not contact or propose changes to upstream Arasan."
+          } > "${body_file}"
+          gh pr create \
+            --repo "${GITHUB_REPOSITORY}" \
+            --base main \
+            --head "${BRANCH}" \
+            --draft \
+            --title "Update SDK to Arasan ${TARGET_TAG}" \
+            --body-file "${body_file}"
+
+      - name: Dispatch available validation workflows
+        if: always() && steps.candidate.outputs.created == 'true'
+        shell: bash
+        env:
+          BRANCH: ${{ steps.candidate.outputs.branch }}
+        run: |
+          for workflow in native.yml wasm.yml apple.yml android.yml server.yml; do
+            if gh workflow view "${workflow}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+              gh workflow run "${workflow}" --repo "${GITHUB_REPOSITORY}" --ref "${BRANCH}"
+            fi
+          done

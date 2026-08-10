@@ -39,4 +39,6 @@ The maintained SDK currently provides:
 
 Apple and Android artifact production remain subsequent increments. See
 [doc/EMBEDDING.md](doc/EMBEDDING.md), [doc/WASM.md](doc/WASM.md), and
-[doc/UPSTREAM-DELTA.md](doc/UPSTREAM-DELTA.md).
+[doc/UPSTREAM-DELTA.md](doc/UPSTREAM-DELTA.md). Stable upstream updates are
+handled by the lightweight process in
+[doc/UPSTREAM-UPDATES.md](doc/UPSTREAM-UPDATES.md).

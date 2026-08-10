@@ -2,12 +2,13 @@ name: WebAssembly
 
 on:
   push:
-    branches: [main, "platform/wasm-*"]
+    branches: [main, "platform/wasm-*", "automation/upstream-*"]
     paths:
       - ".github/workflows/wasm.yml"
       - "cmake/**"
       - "doc/**"
-      - "network/arasanv8-20260622.nnue"
+      - "network/**"
+      - "sdk/upstream.json"
       - "platforms/wasm/**"
       - "src/**"
   pull_request:
@@ -15,7 +16,8 @@ on:
       - ".github/workflows/wasm.yml"
       - "cmake/**"
       - "doc/**"
-      - "network/arasanv8-20260622.nnue"
+      - "network/**"
+      - "sdk/upstream.json"
       - "platforms/wasm/**"
       - "src/**"
   workflow_dispatch:

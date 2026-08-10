@@ -1,0 +1,63 @@
+name: Native
+
+on:
+  push:
+    branches: [main, "update/arasan-*", "automation/upstream-*"]
+    paths:
+      - ".github/workflows/native.yml"
+      - "cmake/**"
+      - "network/**"
+      - "sdk/upstream.json"
+      - "src/**"
+      - "tests/**"
+  pull_request:
+    paths:
+      - ".github/workflows/native.yml"
+      - "cmake/**"
+      - "network/**"
+      - "sdk/upstream.json"
+      - "src/**"
+      - "tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-and-embed:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source and test data
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Initialize required submodules
+        shell: bash
+        run: git submodule update --init src/syzygy book/chess-openings
+
+      - name: Build native tests
+        shell: bash
+        run: make -C src BUILD_TYPE=modern embedded-smoke unit
+
+      - name: Link runtime resources
+        shell: bash
+        run: |
+          network_path="$(jq --raw-output '.network.sourcePath' sdk/upstream.json)"
+          ln --symbolic --force "../${network_path}" "bin/$(basename "${network_path}")"
+          ln --symbolic --force ../book/book.bin bin/book.bin
+          ln --symbolic --force ../book/chess-openings bin/chess-openings
+
+      - name: Run native embedded smoke suite
+        shell: bash
+        run: ./bin/arasan-embed-smoke network
+
+      - name: Run upstream unit suite
+        shell: bash
+        run: ./bin/unit
+
+      - name: Validate pinned upstream metadata
+        shell: bash
+        run: node scripts/upstream/validate.mjs
