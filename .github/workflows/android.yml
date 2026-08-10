@@ -59,6 +59,9 @@ jobs:
         with:
           gradle-version: ${{ steps.versions.outputs.gradle }}
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3.2.2
+
       - name: Install pinned Android build tools
         shell: bash
         run: |
@@ -87,7 +90,7 @@ jobs:
           script: ./platforms/android/run-smoke.sh
 
       - name: Upload package
-        if: always()
+        if: always() && hashFiles('dist/android/**') != ''
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: arasan-chess-sdk-android
