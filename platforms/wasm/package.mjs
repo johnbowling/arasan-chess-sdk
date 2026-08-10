@@ -22,6 +22,10 @@ const copies = [
     [join(buildDir, "arasan.js"), join(distDir, "arasan.js")],
     [join(buildDir, "arasan.wasm"), join(distDir, "arasan.wasm")],
     [join(repoDir, upstream.network.sourcePath), join(distDir, upstream.network.packagedName)],
+    [
+        join(repoDir, upstream.openingBook.sourcePath),
+        join(distDir, upstream.openingBook.packagedName),
+    ],
     [join(platformDir, "arasan-worker.js"), join(distDir, "arasan-worker.js")],
     [join(platformDir, "demo/index.html"), join(distDir, "demo/index.html")],
     [join(platformDir, "demo/demo.js"), join(distDir, "demo/demo.js")],
@@ -40,6 +44,7 @@ const releaseFiles = [
     "arasan.js",
     "arasan.wasm",
     upstream.network.packagedName,
+    upstream.openingBook.packagedName,
     "arasan-worker.js",
     "LICENSE",
 ];
@@ -79,7 +84,8 @@ const manifest = {
         wasmSimd: true,
         threads: 1,
         tablebases: false,
-        openingBook: false,
+        openingBook: true,
+        bookQueryCommand: "bk",
     },
     files,
 };

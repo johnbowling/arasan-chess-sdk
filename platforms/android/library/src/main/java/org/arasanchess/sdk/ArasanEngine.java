@@ -36,10 +36,7 @@ public final class ArasanEngine implements AutoCloseable {
         this.outputListener = outputListener;
     }
 
-    /**
-     * Copies and verifies the packaged NNUE asset, then initializes Arasan.
-     * Only one engine may be open in a process at a time.
-     */
+    /** Copies and verifies packaged resources, then initializes Arasan. */
     public static ArasanEngine open(
             Context context,
             Executor callbackExecutor,
@@ -107,74 +104,105 @@ public final class ArasanEngine implements AutoCloseable {
     private static File prepareResources(Context context) throws IOException {
         synchronized (RESOURCE_LOCK) {
             String identity = BuildConfig.ENGINE_VERSION + "-"
-                    + BuildConfig.NETWORK_SHA256.substring(0, 12).toLowerCase(Locale.ROOT);
+                    + BuildConfig.NETWORK_SHA256.substring(0, 12).toLowerCase(Locale.ROOT) + "-"
+                    + BuildConfig.BOOK_SHA256.substring(0, 12).toLowerCase(Locale.ROOT);
             File root = new File(context.getNoBackupFilesDir(), "arasan-sdk/" + identity);
             if (!root.isDirectory() && !root.mkdirs()) {
                 throw new IOException("could not create Arasan resource directory: " + root);
             }
 
-            File network = new File(root, BuildConfig.NETWORK_ASSET);
-            if (isExpectedNetwork(network)) {
-                return root;
-            }
-
-            File temporary = new File(
+            prepareResource(
+                    context,
                     root,
-                    BuildConfig.NETWORK_ASSET + ".tmp-" + android.os.Process.myPid()
+                    BuildConfig.NETWORK_ASSET,
+                    BuildConfig.NETWORK_BYTES,
+                    BuildConfig.NETWORK_SHA256,
+                    "network"
             );
-            if (temporary.exists() && !temporary.delete()) {
-                throw new IOException("could not remove stale temporary network: " + temporary);
-            }
-
-            MessageDigest digest = newSha256();
-            long copied = 0;
-            try (InputStream input = context.getAssets().open(
-                    "arasan/" + BuildConfig.NETWORK_ASSET
-            ); FileOutputStream output = new FileOutputStream(temporary)) {
-                byte[] buffer = new byte[64 * 1024];
-                int count;
-                while ((count = input.read(buffer)) != -1) {
-                    output.write(buffer, 0, count);
-                    digest.update(buffer, 0, count);
-                    copied += count;
-                }
-                output.getFD().sync();
-            } catch (IOException error) {
-                temporary.delete();
-                throw error;
-            }
-
-            String copiedSha256 = toHex(digest.digest());
-            if (copied != BuildConfig.NETWORK_BYTES
-                    || !BuildConfig.NETWORK_SHA256.equalsIgnoreCase(copiedSha256)) {
-                temporary.delete();
-                throw new IOException("packaged Arasan network failed integrity validation");
-            }
-            if (network.exists() && !network.delete()) {
-                temporary.delete();
-                throw new IOException("could not replace invalid Arasan network: " + network);
-            }
-            if (!temporary.renameTo(network)) {
-                temporary.delete();
-                throw new IOException("could not install Arasan network: " + network);
-            }
+            prepareResource(
+                    context,
+                    root,
+                    BuildConfig.BOOK_ASSET,
+                    BuildConfig.BOOK_BYTES,
+                    BuildConfig.BOOK_SHA256,
+                    "opening book"
+            );
             return root;
         }
     }
 
-    private static boolean isExpectedNetwork(File network) throws IOException {
-        if (!network.isFile() || network.length() != BuildConfig.NETWORK_BYTES) {
+    private static void prepareResource(
+            Context context,
+            File root,
+            String assetName,
+            long expectedBytes,
+            String expectedSha256,
+            String description
+    ) throws IOException {
+        File destination = new File(root, assetName);
+        if (isExpectedResource(destination, expectedBytes, expectedSha256)) {
+            return;
+        }
+        File temporary = new File(
+                root,
+                assetName + ".tmp-" + android.os.Process.myPid()
+        );
+        if (temporary.exists() && !temporary.delete()) {
+            throw new IOException("could not remove stale temporary resource: " + temporary);
+        }
+
+        MessageDigest digest = newSha256();
+        long copied = 0;
+        try (InputStream input = context.getAssets().open(
+                "arasan/" + assetName
+        ); FileOutputStream output = new FileOutputStream(temporary)) {
+            byte[] buffer = new byte[64 * 1024];
+            int count;
+            while ((count = input.read(buffer)) != -1) {
+                output.write(buffer, 0, count);
+                digest.update(buffer, 0, count);
+                copied += count;
+            }
+            output.getFD().sync();
+        } catch (IOException error) {
+            temporary.delete();
+            throw error;
+        }
+
+        String copiedSha256 = toHex(digest.digest());
+        if (copied != expectedBytes || !expectedSha256.equalsIgnoreCase(copiedSha256)) {
+            temporary.delete();
+            throw new IOException(
+                    "packaged Arasan " + description + " failed integrity validation"
+            );
+        }
+        if (destination.exists() && !destination.delete()) {
+            temporary.delete();
+            throw new IOException("could not replace invalid Arasan resource: " + destination);
+        }
+        if (!temporary.renameTo(destination)) {
+            temporary.delete();
+            throw new IOException("could not install Arasan resource: " + destination);
+        }
+    }
+
+    private static boolean isExpectedResource(
+            File resource,
+            long expectedBytes,
+            String expectedSha256
+    ) throws IOException {
+        if (!resource.isFile() || resource.length() != expectedBytes) {
             return false;
         }
         MessageDigest digest = newSha256();
-        try (FileInputStream input = new FileInputStream(network)) {
+        try (FileInputStream input = new FileInputStream(resource)) {
             byte[] buffer = new byte[64 * 1024];
             int count;
             while ((count = input.read(buffer)) != -1) {
                 digest.update(buffer, 0, count);
             }
         }
-        return BuildConfig.NETWORK_SHA256.equalsIgnoreCase(toHex(digest.digest()));
+        return expectedSha256.equalsIgnoreCase(toHex(digest.digest()));
     }
 
     private static MessageDigest newSha256() {

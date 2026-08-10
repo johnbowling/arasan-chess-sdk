@@ -7,11 +7,16 @@ plugins {
 val repositoryDirectory = rootDir.resolve("../..").canonicalFile
 val upstream = JsonSlurper().parse(repositoryDirectory.resolve("sdk/upstream.json")) as Map<*, *>
 val network = upstream["network"] as Map<*, *>
+val openingBook = upstream["openingBook"] as Map<*, *>
 val engineVersion = upstream["engineVersion"] as String
 val networkSourcePath = network["sourcePath"] as String
 val networkPackagedName = network["packagedName"] as String
 val networkBytes = (network["bytes"] as Number).toLong()
 val networkSha256 = network["sha256"] as String
+val openingBookSourcePath = openingBook["sourcePath"] as String
+val openingBookPackagedName = openingBook["packagedName"] as String
+val openingBookBytes = (openingBook["bytes"] as Number).toLong()
+val openingBookSha256 = openingBook["sha256"] as String
 
 fun androidProperty(name: String): String = providers.gradleProperty(name).get()
 fun quoted(value: String): String = "\"${value.replace("\\", "\\\\").replace("\"", "\\\"")}\""
@@ -22,6 +27,10 @@ val prepareArasanAssets by tasks.registering(Copy::class) {
     from(repositoryDirectory.resolve(networkSourcePath)) {
         into("arasan")
         rename { networkPackagedName }
+    }
+    from(repositoryDirectory.resolve(openingBookSourcePath)) {
+        into("arasan")
+        rename { openingBookPackagedName }
     }
     from(repositoryDirectory.resolve("LICENSE")) {
         into("arasan")
@@ -56,6 +65,9 @@ android {
         buildConfigField("String", "NETWORK_ASSET", quoted(networkPackagedName))
         buildConfigField("long", "NETWORK_BYTES", "${networkBytes}L")
         buildConfigField("String", "NETWORK_SHA256", quoted(networkSha256))
+        buildConfigField("String", "BOOK_ASSET", quoted(openingBookPackagedName))
+        buildConfigField("long", "BOOK_BYTES", "${openingBookBytes}L")
+        buildConfigField("String", "BOOK_SHA256", quoted(openingBookSha256))
     }
 
     externalNativeBuild {
@@ -74,7 +86,7 @@ android {
     }
     sourceSets.getByName("main").assets.srcDir(generatedAssetsDirectory.get().asFile)
     androidResources {
-        noCompress += "nnue"
+        noCompress += listOf("nnue", "bin")
     }
 }
 

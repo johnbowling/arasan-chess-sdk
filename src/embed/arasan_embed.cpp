@@ -118,7 +118,10 @@ class EmbeddedRuntime final {
 
             const std::filesystem::path networkPath =
                 std::filesystem::path(resourceRoot) / globals::DEFAULT_NETWORK_NAME;
+            const std::filesystem::path bookPath =
+                std::filesystem::path(resourceRoot) / "book.bin";
             globals::options.search.nnueFile = networkPath.string();
+            globals::options.book.book_path = bookPath.string();
 
             Attacks::init();
             Search::init();

@@ -62,6 +62,20 @@ public final class SmokeActivity extends Activity {
             require(output.containsExact("readyok"), "readyok was not emitted");
 
             if (fullSuite) {
+                require(
+                        engine.send("setoption name OwnBook value true"),
+                        "opening-book option failed"
+                );
+                require(engine.send("position startpos"), "book position failed");
+                require(engine.send("bk"), "book query failed");
+                require(
+                        output.containsTrimmed("book moves:"),
+                        "start position reported no opening-book moves"
+                );
+                require(
+                        engine.send("setoption name OwnBook value false"),
+                        "opening-book disable failed"
+                );
                 require(engine.send("setoption name MultiPV value 3"), "MultiPV option failed");
                 require(engine.send("position fen " + TEST_FEN), "FEN command failed");
                 require(engine.send("go depth 5"), "bounded search failed");
@@ -141,6 +155,15 @@ public final class SmokeActivity extends Activity {
         synchronized boolean containsFragment(String fragment) {
             for (String line : lines) {
                 if (line.contains(fragment)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        synchronized boolean containsTrimmed(String expected) {
+            for (String line : lines) {
+                if (expected.equals(line.trim())) {
                     return true;
                 }
             }

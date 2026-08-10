@@ -65,6 +65,10 @@ int main(int argc, char **argv) {
         "uci",
         "isready",
         "ucinewgame",
+        "setoption name OwnBook value true",
+        "position startpos",
+        "bk",
+        "setoption name OwnBook value false",
         "position fen rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1",
         "go movetime 100",
     };
@@ -93,8 +97,8 @@ int main(int argc, char **argv) {
     infiniteSearch.join();
 
     const bool passed = contains(output, "uciok") && contains(output, "readyok") &&
-                        hasLegalBestMove(output) && observedSearching && stopped &&
-                        infiniteSearchResult.load() != 0;
+                        contains(output, " book moves:") && hasLegalBestMove(output) &&
+                        observedSearching && stopped && infiniteSearchResult.load() != 0;
     if (!arasan_embed_send("quit")) {
         std::cerr << "command failed: quit" << std::endl;
         arasan_embed_shutdown();

@@ -106,6 +106,17 @@ function verifyNetwork(packageName, network) {
   requireValue(network?.sha256 === upstream.network.sha256, `${packageName} network checksum differs`);
 }
 
+function verifyOpeningBook(packageName, openingBook) {
+  requireValue(
+    openingBook?.bytes === upstream.openingBook.bytes,
+    `${packageName} opening-book size differs`,
+  );
+  requireValue(
+    openingBook?.sha256 === upstream.openingBook.sha256,
+    `${packageName} opening-book checksum differs`,
+  );
+}
+
 async function collectFiles(root, directory = root) {
   const files = [];
   for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) =>
@@ -159,6 +170,12 @@ requireValue(apple.source?.commit === sourceCommit, "Apple source commit differs
 requireValue(apple.source?.dirty === false, "Apple package was built from a dirty checkout");
 const appleNetworkPath = `resources/${upstream.network.packagedName}`;
 verifyNetwork("Apple", apple.artifacts?.[appleNetworkPath]);
+const appleOpeningBookPath = `resources/${upstream.openingBook.packagedName}`;
+requireValue(
+  apple.openingBookFile === appleOpeningBookPath,
+  "Apple opening-book path differs",
+);
+verifyOpeningBook("Apple", apple.artifacts?.[appleOpeningBookPath]);
 await verifyDeclaredFiles("Apple", inputRoots.apple, apple.artifacts);
 
 const android = manifests.android;
@@ -171,6 +188,13 @@ requireValue(android.fork?.sourceCommit === sourceCommit, "Android source commit
 requireValue(android.fork?.dirty === false, "Android package was built from a dirty checkout");
 requireValue(android.network?.file === upstream.network.packagedName, "Android network name differs");
 verifyNetwork("Android", android.network);
+requireValue(
+  android.android?.openingBookAsset ===
+    `assets/arasan/${upstream.openingBook.packagedName}`,
+  "Android opening-book path differs",
+);
+requireValue(android.capabilities?.openingBook === true, "Android opening book is disabled");
+verifyOpeningBook("Android", android.openingBook);
 await verifyDeclaredFiles("Android", inputRoots.android, android.files);
 
 const wasm = manifests.wasm;
@@ -182,6 +206,8 @@ requireValue(wasm.fork?.repository === sourceRepository, "WebAssembly source rep
 requireValue(wasm.fork?.sourceCommit === sourceCommit, "WebAssembly source commit differs");
 requireValue(wasm.fork?.dirty === false, "WebAssembly package was built from a dirty checkout");
 verifyNetwork("WebAssembly", wasm.files?.[upstream.network.packagedName]);
+requireValue(wasm.capabilities?.openingBook === true, "WebAssembly opening book is disabled");
+verifyOpeningBook("WebAssembly", wasm.files?.[upstream.openingBook.packagedName]);
 await verifyDeclaredFiles("WebAssembly", inputRoots.wasm, wasm.files);
 
 await rm(outputDir, { recursive: true, force: true });
@@ -218,6 +244,11 @@ const releaseManifest = {
     file: upstream.network.packagedName,
     bytes: upstream.network.bytes,
     sha256: upstream.network.sha256,
+  },
+  openingBook: {
+    file: upstream.openingBook.packagedName,
+    bytes: upstream.openingBook.bytes,
+    sha256: upstream.openingBook.sha256,
   },
   platforms: {
     apple: {

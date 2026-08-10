@@ -35,13 +35,15 @@ executable directory or the user's home directory.
 Embedded defaults are deliberately conservative:
 
 - one search thread;
-- opening book and ECO loading disabled;
+- opening-book play and ECO loading disabled by default;
 - Syzygy tablebases disabled at runtime;
 - position learning disabled; and
 - game storage disabled.
 
 Consumers can change supported engine options with normal UCI `setoption`
-commands after initialization.
+commands after initialization. The explicit resource root also supplies the
+packaged `book.bin`; `setoption name OwnBook value true` enables book play, and
+the existing `bk` command lists book moves for the current position.
 
 ## WebAssembly host
 

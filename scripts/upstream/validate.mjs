@@ -56,6 +56,25 @@ expect(networkStat.size === manifest.network.bytes, "network size differs");
 expect((await sha256(networkPath)) === manifest.network.sha256, "network checksum differs");
 expect(taggedNetwork.length === manifest.network.bytes, "tagged network size differs");
 expect(sha256Bytes(taggedNetwork) === manifest.network.sha256, "tagged network checksum differs");
+const openingBookPath = resolve(repoDir, manifest.openingBook.sourcePath);
+const openingBookStat = await stat(openingBookPath);
+const taggedOpeningBook = commandBytes("git", [
+  "show",
+  `${manifest.tag}:${manifest.openingBook.sourcePath}`,
+]);
+expect(openingBookStat.size === manifest.openingBook.bytes, "opening-book size differs");
+expect(
+  (await sha256(openingBookPath)) === manifest.openingBook.sha256,
+  "opening-book checksum differs",
+);
+expect(
+  taggedOpeningBook.length === manifest.openingBook.bytes,
+  "tagged opening-book size differs",
+);
+expect(
+  sha256Bytes(taggedOpeningBook) === manifest.openingBook.sha256,
+  "tagged opening-book checksum differs",
+);
 const taggedLicense = commandBytes("git", [
   "show",
   `${manifest.tag}:${manifest.license.sourcePath}`,

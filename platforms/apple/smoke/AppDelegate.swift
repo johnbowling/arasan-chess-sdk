@@ -82,6 +82,20 @@ private func runEngineSmoke() throws {
 
         if cycle == 1 {
             try require(
+                arasan_embed_send("setoption name OwnBook value true") == 1,
+                "opening-book option failed"
+            )
+            try require(arasan_embed_send("position startpos") == 1, "book position failed")
+            try require(arasan_embed_send("bk") == 1, "book query failed")
+            try require(
+                collector.lines().contains { $0.trimmingCharacters(in: .whitespaces) == "book moves:" },
+                "start position reported no opening-book moves"
+            )
+            try require(
+                arasan_embed_send("setoption name OwnBook value false") == 1,
+                "opening-book disable failed"
+            )
+            try require(
                 arasan_embed_send("setoption name MultiPV value 3") == 1,
                 "MultiPV option failed"
             )

@@ -28,8 +28,8 @@ permission notice.
 | SHA-256 | `b42f9e13a37debb4af425d2ca74b5edff1d8034a616806bccdb67b79530201ac` |
 
 Embedded artifacts must use that file unless the engine version, manifest, and
-checksum are deliberately updated together. The opening book, GUI assets,
-fonts, and tablebase data are not part of the embedded distribution.
+checksum are deliberately updated together. GUI assets, fonts, and tablebase
+data are not part of the embedded distribution.
 
 The WebAssembly package renames the unchanged network payload to
 `arasan.nnue`. Its package manifest must retain the same byte size and SHA-256.
@@ -39,9 +39,19 @@ The Android AAR uses the same name, byte size, and checksum under
 `assets/arasan`; its Java host verifies the payload before copying it to
 app-private storage.
 
-For reference, the upstream `book/book.bin` file at this commit has SHA-256
-`21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209`,
-but embedded mode disables and does not package it.
+## Required opening book
+
+| Item | Value |
+| --- | --- |
+| File | `book/book.bin` |
+| Packaged name | `book.bin` |
+| Size | `27,463,119` bytes |
+| SHA-256 | `21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209` |
+
+The Arasan license explicitly covers the `book` directory. Embedded artifacts
+package this unchanged file beside the network and record its checksum. Book
+play remains disabled by default; consumers opt in with `OwnBook` and can query
+the current position with Arasan's existing non-standard `bk` command.
 
 ## Original v26.0 baseline reproduction
 

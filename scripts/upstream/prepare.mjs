@@ -42,6 +42,15 @@ const taggedNetworkChecksum = sha256Bytes(taggedNetwork);
 if ((await sha256(networkPath)) !== taggedNetworkChecksum) {
   throw new Error("merged network payload differs from the upstream tag");
 }
+const openingBookPath = resolve(repoDir, previous.openingBook.sourcePath);
+const taggedOpeningBook = commandBytes("git", [
+  "show",
+  `${tag}:${previous.openingBook.sourcePath}`,
+]);
+const taggedOpeningBookChecksum = sha256Bytes(taggedOpeningBook);
+if ((await sha256(openingBookPath)) !== taggedOpeningBookChecksum) {
+  throw new Error("merged opening-book payload differs from the upstream tag");
+}
 const licensePath = resolve(repoDir, previous.license.sourcePath);
 const taggedLicense = commandBytes("git", ["show", `${tag}:${previous.license.sourcePath}`]);
 const licenseChecksum = sha256Bytes(taggedLicense);
@@ -63,6 +72,11 @@ const next = {
     bytes: taggedNetwork.length,
     sha256: taggedNetworkChecksum,
   },
+  openingBook: {
+    ...previous.openingBook,
+    bytes: taggedOpeningBook.length,
+    sha256: taggedOpeningBookChecksum,
+  },
   license: {
     ...previous.license,
     sha256: licenseChecksum,
@@ -79,6 +93,8 @@ const replacements = new Map([
   [previous.network.sourcePath, next.network.sourcePath],
   [commaBytes(previous.network.bytes), commaBytes(next.network.bytes)],
   [previous.network.sha256, next.network.sha256],
+  [commaBytes(previous.openingBook.bytes), commaBytes(next.openingBook.bytes)],
+  [previous.openingBook.sha256, next.openingBook.sha256],
 ]);
 for (const relativePath of ["FORK.md", "doc/PROVENANCE.md", "doc/UPSTREAM-DELTA.md"]) {
   const path = resolve(repoDir, relativePath);

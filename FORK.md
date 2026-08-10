@@ -30,9 +30,11 @@ dependency of delivery.
 
 The maintained SDK currently provides:
 
-- provenance for the upstream source and NNUE network;
+- provenance for the upstream source, NNUE network, and opening book;
 - a small, line-oriented C API around Arasan's existing UCI implementation;
 - explicit embedded resource paths and conservative embedded defaults;
+- verified opening-book packaging and an unchanged `bk` query on every
+  consumer platform;
 - a native static-library build and smoke test;
 - a single-threaded, SIMD WebAssembly build with a raw UCI Worker host;
 - an iOS XCFramework for arm64 devices and arm64/x86_64 simulators;

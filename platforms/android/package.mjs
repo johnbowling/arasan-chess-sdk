@@ -51,10 +51,12 @@ if (zipListing.status !== 0) {
 }
 const entries = new Set(zipListing.stdout.trim().split(/\r?\n/));
 const networkEntry = `assets/arasan/${upstream.network.packagedName}`;
+const openingBookEntry = `assets/arasan/${upstream.openingBook.packagedName}`;
 const requiredEntries = [
   "AndroidManifest.xml",
   "classes.jar",
   networkEntry,
+  openingBookEntry,
   "assets/arasan/LICENSE",
   "assets/arasan/PROVENANCE.md",
   "jni/arm64-v8a/libarasan_android.so",
@@ -80,6 +82,24 @@ if (
   networkSha256 !== upstream.network.sha256
 ) {
   throw new Error("Android AAR network payload does not match sdk/upstream.json");
+}
+
+const packagedOpeningBook = spawnSync("unzip", ["-p", aarSource, openingBookEntry], {
+  encoding: null,
+  maxBuffer: 64 * 1024 * 1024,
+});
+if (packagedOpeningBook.status !== 0) {
+  process.stderr.write(packagedOpeningBook.stderr?.toString() ?? "");
+  process.exit(packagedOpeningBook.status ?? 1);
+}
+const openingBookSha256 = createHash("sha256")
+  .update(packagedOpeningBook.stdout)
+  .digest("hex");
+if (
+  packagedOpeningBook.stdout.length !== upstream.openingBook.bytes ||
+  openingBookSha256 !== upstream.openingBook.sha256
+) {
+  throw new Error("Android AAR opening book does not match sdk/upstream.json");
 }
 
 await rm(distDir, { recursive: true, force: true });
@@ -130,11 +150,17 @@ const manifest = {
     targetSdk: Number(properties.arasanTargetSdk),
     abis: properties.arasanAbis.split(","),
     networkAsset: networkEntry,
+    openingBookAsset: openingBookEntry,
   },
   network: {
     file: upstream.network.packagedName,
     bytes: upstream.network.bytes,
     sha256: upstream.network.sha256,
+  },
+  openingBook: {
+    file: upstream.openingBook.packagedName,
+    bytes: upstream.openingBook.bytes,
+    sha256: upstream.openingBook.sha256,
   },
   toolchain: {
     androidGradlePlugin: properties.arasanAgpVersion,
@@ -147,7 +173,8 @@ const manifest = {
     javaApi: "org.arasanchess.sdk.ArasanEngine",
     processWideInstances: 1,
     tablebases: false,
-    openingBook: false,
+    openingBook: true,
+    bookQueryCommand: "bk",
   },
   files,
 };

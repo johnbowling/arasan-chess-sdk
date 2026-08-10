@@ -47,6 +47,7 @@ async function boot() {
     const loaderUrl = new URL("arasan.js", self.location.href);
     const wasmUrl = new URL("arasan.wasm", self.location.href);
     const networkUrl = new URL("arasan.nnue", self.location.href);
+    const bookUrl = new URL("book.bin", self.location.href);
 
     self.importScripts(loaderUrl.href);
     const module = await createArasanModule({
@@ -61,13 +62,23 @@ async function boot() {
         },
     });
 
-    const response = await fetch(networkUrl);
-    if (!response.ok) {
-        throw new Error(`network fetch returned HTTP ${response.status}`);
+    const [networkResponse, bookResponse] = await Promise.all([
+        fetch(networkUrl),
+        fetch(bookUrl),
+    ]);
+    if (!networkResponse.ok) {
+        throw new Error(`network fetch returned HTTP ${networkResponse.status}`);
     }
-    const network = new Uint8Array(await response.arrayBuffer());
+    if (!bookResponse.ok) {
+        throw new Error(`book fetch returned HTTP ${bookResponse.status}`);
+    }
+    const [network, book] = await Promise.all([
+        networkResponse.arrayBuffer().then((bytes) => new Uint8Array(bytes)),
+        bookResponse.arrayBuffer().then((bytes) => new Uint8Array(bytes)),
+    ]);
     module.FS.mkdirTree("/arasan");
     module.FS.writeFile("/arasan/arasan.nnue", network);
+    module.FS.writeFile("/arasan/book.bin", book);
 
     const initialized = module.ccall(
         "arasan_wasm_initialize",
@@ -80,6 +91,7 @@ async function boot() {
     }
 
     engine = module;
+    send("setoption name BookPath value /arasan/book.bin");
     for (const command of pendingCommands.splice(0)) {
         if (!send(command)) break;
     }

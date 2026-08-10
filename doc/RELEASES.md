@@ -47,8 +47,9 @@ release-manifest.json  normalized cross-platform candidate metadata
 ```
 
 The assembler rejects the candidate unless all platform manifests identify the
-same engine version, upstream source commit, fork source commit, and NNUE
-network. It also checks each declared payload checksum and requires every
+same engine version, upstream source commit, fork source commit, NNUE network,
+and opening book. It also checks each declared payload checksum, requires each
+consumer package to expose the opening-book capability, and requires every
 package to report a clean source checkout.
 
 Actions retains the dry-run candidate for 90 days. Consumers must not depend on

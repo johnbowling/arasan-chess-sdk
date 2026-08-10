@@ -69,6 +69,17 @@ async function run() {
     await initialize();
     record("UCI initialization and readiness", true);
 
+    worker.postMessage("setoption name OwnBook value true");
+    worker.postMessage("position startpos");
+    const bookStart = lines.length;
+    worker.postMessage("bk");
+    await commandAndWait("isready", (line) => line === "readyok");
+    if (!lines.slice(bookStart).some((line) => line.trim() === "book moves:")) {
+        throw new Error("start position reported no opening-book moves");
+    }
+    worker.postMessage("setoption name OwnBook value false");
+    record("packaged opening book responds to bk", true);
+
     worker.postMessage("setoption name MultiPV value 3");
     worker.postMessage("position fen r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3");
     const firstSearchStart = lines.length;

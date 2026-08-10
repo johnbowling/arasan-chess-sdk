@@ -11,6 +11,12 @@
     "bytes": 25024576,
     "sha256": "b42f9e13a37debb4af425d2ca74b5edff1d8034a616806bccdb67b79530201ac"
   },
+  "openingBook": {
+    "sourcePath": "book/book.bin",
+    "packagedName": "book.bin",
+    "bytes": 27463119,
+    "sha256": "21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209"
+  },
   "license": {
     "sourcePath": "LICENSE",
     "sha256": "6e7d9a38a45136d28652a2ccc212644cae26ba71e98f5bb3e0b3ccd564db9285"

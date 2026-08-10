@@ -47,6 +47,10 @@ await cp(
   join(repoDir, upstream.network.sourcePath),
   join(stagingDir, "resources", upstream.network.packagedName),
 );
+await cp(
+  join(repoDir, upstream.openingBook.sourcePath),
+  join(stagingDir, "resources", upstream.openingBook.packagedName),
+);
 await cp(join(repoDir, "LICENSE"), join(stagingDir, "LICENSE"));
 await cp(join(repoDir, "doc", "APPLE.md"), join(stagingDir, "README.md"));
 await cp(join(repoDir, "doc", "PROVENANCE.md"), join(stagingDir, "PROVENANCE.md"));
@@ -114,6 +118,7 @@ const manifest = {
   arasanVersion: upstream.engineVersion,
   minimumIOSVersion: deploymentTarget,
   networkFile: `resources/${upstream.network.packagedName}`,
+  openingBookFile: `resources/${upstream.openingBook.packagedName}`,
   upstream: {
     repository: upstream.repository,
     tag: upstream.tag,

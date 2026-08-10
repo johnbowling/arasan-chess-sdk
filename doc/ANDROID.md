@@ -12,6 +12,7 @@ supports Android API 24 or newer and contains native libraries for
   the application boundary;
 - `libarasan_android.so` for `arm64-v8a` and `x86_64`;
 - `assets/arasan/arasan.nnue`, the required checksummed evaluation network;
+- `assets/arasan/book.bin`, the required checksummed opening book;
 - the Arasan license and source/network provenance; and
 - consumer R8 rules that preserve the JNI entry points.
 
@@ -46,9 +47,9 @@ run:
 ```
 
 The smoke application validates UCI readiness, a three-line MultiPV search,
-cancellation of an infinite search, shutdown and reinitialization, a second
-bounded search, process recreation, and reuse of the verified private network
-copy.
+cancellation of an infinite search, opening-book lookup, shutdown and
+reinitialization, a second bounded search, process recreation, and reuse of the
+verified private resource copies.
 
 ## Host integration
 
@@ -74,9 +75,10 @@ ArasanEngine engine = ArasanEngine.open(
 backgroundExecutor.execute(() -> engine.send("go movetime 250"));
 ```
 
-`ArasanEngine.open` verifies and copies the bundled NNUE asset into the
-application's no-backup private directory before calling the native engine.
-The consumer does not need to discover or manage a network path.
+`ArasanEngine.open` verifies and copies the bundled NNUE and opening-book assets
+into the application's no-backup private directory before calling the native
+engine. The consumer does not need to discover or manage resource paths. Book
+play is off by default; use the normal `OwnBook` option or `bk` query command.
 
 A bounded `go` command is synchronous and must not run on the Android main
 thread. Ordinary commands should be serialized by the host. A second thread

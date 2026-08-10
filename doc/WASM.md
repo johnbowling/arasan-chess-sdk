@@ -14,7 +14,8 @@ per message.
 | WebAssembly SIMD | Required |
 | `SharedArrayBuffer` / cross-origin isolation | Not required |
 | NNUE | External `arasan.nnue` asset loaded into the virtual filesystem at startup |
-| Opening book / ECO | Disabled and not packaged |
+| Opening book | Packaged; disabled by default; queryable with `bk` |
+| ECO classification | Disabled and not packaged |
 | Syzygy tablebases | Not compiled or packaged |
 | Learning / game storage | Disabled |
 | Initial / maximum memory | 128 MiB / 512 MiB, with growth enabled |
@@ -40,13 +41,15 @@ The package contains:
 
 - `arasan.js` and `arasan.wasm`: the modular Emscripten loader and engine;
 - `arasan.nnue`: the unchanged, MIT-licensed upstream v26.0 network;
+- `book.bin`: the unchanged, MIT-licensed upstream v26.0 opening book;
 - `arasan-worker.js`: the raw UCI Worker adapter;
 - `manifest.json`: source, toolchain, capabilities, sizes, and SHA-256 values;
 - `LICENSE` and `PROVENANCE.md`; and
 - `demo/` and `test/`: static integration and acceptance harnesses.
 
 The network is renamed for a stable package contract. Its bytes must continue to
-match the size and SHA-256 in [PROVENANCE.md](PROVENANCE.md).
+match the size and SHA-256 in [PROVENANCE.md](PROVENANCE.md). The opening book
+keeps its upstream filename and is checked against the same provenance record.
 
 ## Browser use
 
@@ -72,6 +75,14 @@ engine.postMessage("position startpos");
 engine.postMessage("go movetime 250");
 ```
 
+Enable or inspect the book without changing the raw-string boundary:
+
+```js
+engine.postMessage("setoption name OwnBook value true");
+engine.postMessage("position startpos");
+engine.postMessage("bk");
+```
+
 Commands sent during network loading are queued in order. The normal `uciok`
 and `readyok` responses are the readiness handshake; the Worker does not add a
 parallel control protocol. Invalid message types and initialization errors are
@@ -94,9 +105,10 @@ search. This gives deterministic cancellation without pthreads or Asyncify.
 Open `http://127.0.0.1:4173/test/` after building. The browser suite verifies:
 
 1. `uci` / `uciok` and `isready` / `readyok`;
-2. FEN loading and MultiPV lines 1–3;
-3. a bounded `go movetime` returning `bestmove`; and
-4. termination of `go infinite`, Worker replacement, and a clean second search.
+2. packaged opening-book lookup from the initial position through `bk`;
+3. FEN loading and MultiPV lines 1–3;
+4. a bounded `go movetime` returning `bestmove`; and
+5. termination of `go infinite`, Worker replacement, and a clean second search.
 
 The GitHub Actions workflow rebuilds with Emscripten 6.0.6, runs the same suite
 in a headless browser, and uploads the checksummed package. Release publication

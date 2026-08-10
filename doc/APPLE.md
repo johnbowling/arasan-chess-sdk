@@ -27,7 +27,7 @@ included Swift application:
 
 The smoke application imports the packaged C module from Swift and validates
 UCI startup, a three-line MultiPV search, cancellation of an infinite search,
-shutdown, reinitialization, and a second bounded search.
+opening-book lookup, shutdown, reinitialization, and a second bounded search.
 
 On Apple Silicon, set `ARASAN_APPLE_X86_64_SIMULATOR=0` to omit the Intel
 simulator slice. Set `ARASAN_IOS_DEPLOYMENT_TARGET` to raise (but not lower)
@@ -37,6 +37,7 @@ The package is written to `dist/apple`:
 
 - `Arasan.xcframework` is the static library and public C header.
 - `resources/arasan.nnue` is the required network resource.
+- `resources/book.bin` is the required opening-book resource.
 - `manifest.json` records source/toolchain provenance and SHA-256 checksums.
 - `LICENSE` and `PROVENANCE.md` carry redistribution information.
 
@@ -47,8 +48,8 @@ single baseline before rebuilding and validating this package.
 ## Host integration
 
 1. Add `Arasan.xcframework` to the application target.
-2. Copy `resources/arasan.nnue` into the application bundle without renaming
-   it.
+2. Copy `resources/arasan.nnue` and `resources/book.bin` into the application
+   bundle without renaming them.
 3. Use `import ArasanEngine` in Swift, or include `arasan_embed.h` from
    Objective-C/Objective-C++.
 4. Ensure the application links the C++ standard library (`libc++` / `-lc++`).
@@ -56,6 +57,10 @@ single baseline before rebuilding and validating this package.
 6. Exchange normal UCI commands through `arasan_embed_send` and consume
    complete UCI output lines through the callback.
 7. Call `arasan_embed_shutdown` before discarding the host integration.
+
+Book play is off by default. Send `setoption name OwnBook value true` to use it
+for engine moves, or send `bk` after setting a position to list the available
+book moves.
 
 There is one process-wide engine instance. A bounded `go` command runs
 synchronously, so invoke it away from the main thread. A second host thread may

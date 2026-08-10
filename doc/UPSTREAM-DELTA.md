@@ -10,7 +10,7 @@ It should be updated whenever the integration branch changes.
 | Lifecycle | Allows global initialization without desktop process stack configuration | Avoids mutating a containing mobile or browser process | High; general embedding safety |
 | Lifecycle cleanup | Clears owned global pointers and NNUE initialization state | Supports deterministic teardown and later reinitialization | Medium; general robustness |
 | C API | Adds the single-instance API in `src/embed` | Provides a stable primitive ABI for Swift, JNI/Dart FFI, and WASM | High; general embedding use |
-| Embedded profile | Disables book, ECO, tablebases, learning, and game storage by default | Avoids undeclared files and writes in app sandboxes | Medium; profile is policy-sensitive |
+| Embedded profile | Uses an explicit resource root; disables book play, ECO, tablebases, learning, and game storage by default | Avoids executable-path discovery and undeclared writes in app sandboxes while allowing packaged book queries | Medium; profile is policy-sensitive |
 | Native build | Adds static-library and smoke-test Make targets | Proves the common host before platform packaging | Medium |
 | Embedded CMake | Adds a reusable embedded-library source target | Gives platform builds an explicit target without changing the upstream CLI target | High; general build reuse |
 | Web portability | Disables stdin polling, process path discovery, process stack tuning, and extra search threads under Emscripten | Matches the single-threaded Worker runtime and browser sandbox | Medium; browser-specific policy |

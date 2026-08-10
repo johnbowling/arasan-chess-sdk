@@ -50,6 +50,7 @@ xcrun --sdk iphonesimulator swiftc \
 cp "${script_dir}/smoke/Info.plist" "${app_dir}/Info.plist"
 plutil -replace MinimumOSVersion -string "${deployment_target}" "${app_dir}/Info.plist"
 cp "${dist_dir}/resources/arasan.nnue" "${app_dir}/arasan.nnue"
+cp "${dist_dir}/resources/book.bin" "${app_dir}/book.bin"
 codesign --force --sign - --timestamp=none "${app_dir}"
 
 echo "Arasan Apple smoke application: ${app_dir}"
