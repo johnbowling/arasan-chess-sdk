@@ -24,7 +24,7 @@ else()
     target_compile_options(arasan_embed_android PRIVATE -msse2)
 endif()
 
-add_library(arasan_android SHARED src/main/cpp/arasan_jni.cpp)
+add_library(arasan_android SHARED library/src/main/cpp/arasan_jni.cpp)
 target_link_libraries(arasan_android PRIVATE arasan_embed_android)
 target_compile_features(arasan_android PRIVATE cxx_std_17)
 set_target_properties(arasan_android PROPERTIES
