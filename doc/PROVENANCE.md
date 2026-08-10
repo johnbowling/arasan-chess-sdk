@@ -35,6 +35,9 @@ The WebAssembly package renames the unchanged network payload to
 `arasan.nnue`. Its package manifest must retain the same byte size and SHA-256.
 The Apple package uses the same name, byte size, and checksum and carries the
 network as an explicit application resource beside the XCFramework.
+The Android AAR uses the same name, byte size, and checksum under
+`assets/arasan`; its Java host verifies the payload before copying it to
+app-private storage.
 
 For reference, the upstream `book/book.bin` file at this commit has SHA-256
 `21c7938d90d5247f3d916e5b11d7efc6b6a863b2b1f9fa63104e87d0a996b209`,
@@ -61,3 +64,9 @@ The Apple SDK baseline was reproduced with the same Xcode installation and iOS
 - a combined XCFramework with a Swift-importable C module; and
 - a successful arm64 simulator run covering UCI readiness, MultiPV, bounded and
   cancelled searches, shutdown, and reinitialization.
+
+The Android SDK baseline targets API 24 or newer, uses NDK 28.2.13676358 and
+CMake 3.22.1, and produces `arm64-v8a` and `x86_64` shared libraries. Hosted
+validation compiles both ABIs and runs the common UCI smoke behavior on an
+x86_64 Android emulator. Physical ARM64 execution remains a consumer release
+validation step.

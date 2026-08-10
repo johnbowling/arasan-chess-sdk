@@ -18,6 +18,8 @@ It should be updated whenever the integration branch changes.
 | Web package | Adds Emscripten exports, raw UCI Worker glue, demo, smoke suite, manifest, and CI | Produces a reproducible browser integration artifact | Low; maintained downstream platform distribution |
 | Apple portability | Avoids executable-path discovery in the sandboxed embedded Apple target | Makes the host-provided resource directory authoritative without changing macOS CLI behavior | Medium; useful for Apple embedding, but platform-policy specific |
 | Apple package | Adds device/simulator CMake builds, XCFramework assembly, Swift module metadata, smoke app, manifest, and CI | Produces a reproducible iOS integration artifact | Low; maintained downstream platform distribution |
+| Android portability | Uses `posix_memalign` where API 24 does not expose C++17 `aligned_alloc` | Preserves Arasan's required hash-table alignment on the declared Android floor | High; generic Android build correctness |
+| Android package | Adds ARM64/x86_64 CMake builds, AAR assembly, Java/JNI lifecycle and resource hosting, smoke app, manifest, and CI | Produces a reproducible Android integration artifact | Low; maintained downstream platform distribution |
 | Documentation | Adds fork, provenance, embedding, and delta documents | Makes source and artifacts reproducible | High |
 
 No engine evaluation, search, or strength code is intentionally changed. No

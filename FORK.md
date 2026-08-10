@@ -36,11 +36,13 @@ The maintained SDK currently provides:
 - a native static-library build and smoke test;
 - a single-threaded, SIMD WebAssembly build with a raw UCI Worker host;
 - an iOS XCFramework for arm64 devices and arm64/x86_64 simulators;
-- a Swift simulator acceptance application for the packaged Apple artifact; and
+- a Swift simulator acceptance application for the packaged Apple artifact;
+- an Android AAR for arm64-v8a devices and x86_64 emulators;
+- a Java/JNI host with verified private NNUE extraction and emulator acceptance; and
 - unchanged command-line engine behavior.
 
-Android artifact production remains a subsequent increment. See
-[doc/EMBEDDING.md](doc/EMBEDDING.md), [doc/APPLE.md](doc/APPLE.md),
-[doc/WASM.md](doc/WASM.md), and [doc/UPSTREAM-DELTA.md](doc/UPSTREAM-DELTA.md).
+See [doc/EMBEDDING.md](doc/EMBEDDING.md), [doc/APPLE.md](doc/APPLE.md),
+[doc/ANDROID.md](doc/ANDROID.md), [doc/WASM.md](doc/WASM.md), and
+[doc/UPSTREAM-DELTA.md](doc/UPSTREAM-DELTA.md).
 Stable upstream updates are handled by the lightweight process in
 [doc/UPSTREAM-UPDATES.md](doc/UPSTREAM-UPDATES.md).
