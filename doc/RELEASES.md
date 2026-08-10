@@ -13,7 +13,7 @@ validation.
 ## Build a candidate
 
 Open **Actions → Release candidate → Run workflow** and select the exact branch
-or commit to validate. The optional version must use the downstream form
+or tag to validate. The optional version must use the downstream form
 `v<arasan-version>-embed.<release>-rc.<candidate>`, for example:
 
 ```text

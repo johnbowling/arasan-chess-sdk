@@ -198,11 +198,6 @@ const files = {};
 for (const member of candidateFiles) {
   files[member] = await metadata(packageMember(outputDir, member));
 }
-const checksumContents = `${Object.entries(files)
-  .map(([member, value]) => `${value.sha256}  ${member}`)
-  .join("\n")}\n`;
-await writeFile(join(outputDir, "SHA256SUMS"), checksumContents);
-const checksumFile = await metadata(join(outputDir, "SHA256SUMS"));
 
 const releaseManifest = {
   schemaVersion: 1,
@@ -259,10 +254,7 @@ const releaseManifest = {
     packageRegistryPublished: false,
   },
   files,
-  checksumFile: {
-    path: "SHA256SUMS",
-    ...checksumFile,
-  },
+  checksumFile: "SHA256SUMS",
 };
 
 await writeFile(
@@ -270,6 +262,14 @@ await writeFile(
   `${JSON.stringify(releaseManifest, null, 2)}\n`,
 );
 
+const checksummedFiles = [...candidateFiles, "release-manifest.json"];
+const checksumLines = [];
+for (const member of checksummedFiles) {
+  const value = files[member] ?? (await metadata(packageMember(outputDir, member)));
+  checksumLines.push(`${value.sha256}  ${member}`);
+}
+await writeFile(join(outputDir, "SHA256SUMS"), `${checksumLines.join("\n")}\n`);
+
 console.log(
-  `${candidateVersion} assembled from ${sourceCommit} with ${candidateFiles.length} checksummed files`,
+  `${candidateVersion} assembled from ${sourceCommit} with ${checksummedFiles.length} checksummed files`,
 );

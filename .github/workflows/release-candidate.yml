@@ -3,13 +3,6 @@ name: Release candidate
 on:
   push:
     branches: ["release/candidate-*"]
-    paths:
-      - ".github/workflows/**"
-      - "doc/RELEASES.md"
-      - "platforms/**"
-      - "scripts/release/**"
-      - "sdk/upstream.json"
-      - "src/**"
   workflow_dispatch:
     inputs:
       candidate-version:
