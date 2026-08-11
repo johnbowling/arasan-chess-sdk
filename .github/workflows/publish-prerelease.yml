@@ -1,0 +1,123 @@
+name: Publish SDK prerelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      candidate-run-id:
+        description: "Successful Release candidate workflow run ID"
+        required: true
+        type: string
+      prerelease-tag:
+        description: "Exact candidate version, for example v26.0-embed.1-rc.3"
+        required: true
+        type: string
+
+concurrency:
+  group: publish-sdk-prerelease
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out release tooling
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Download the validated candidate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate-run-id }}
+          PRERELEASE_TAG: ${{ inputs.prerelease-tag }}
+        run: |
+          set -euo pipefail
+          run_json="$(gh run view "${CANDIDATE_RUN_ID}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json conclusion,headSha,name)"
+          test "$(jq --raw-output '.name' <<< "${run_json}")" = "Release candidate"
+          test "$(jq --raw-output '.conclusion' <<< "${run_json}")" = "success"
+          candidate_commit="$(jq --raw-output '.headSha' <<< "${run_json}")"
+          git cat-file -e "${candidate_commit}^{commit}"
+          mkdir -p dist/release-candidate
+          gh run download "${CANDIDATE_RUN_ID}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --name "arasan-chess-sdk-release-candidate-${PRERELEASE_TAG}" \
+            --dir dist/release-candidate
+
+      - name: Verify candidate identity and checksums
+        id: candidate
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.candidate-run-id }}
+          PRERELEASE_TAG: ${{ inputs.prerelease-tag }}
+        working-directory: dist/release-candidate
+        run: |
+          set -euo pipefail
+          [[ "${PRERELEASE_TAG}" =~ ^v[0-9]+\.[0-9]+(\.[0-9]+)?-embed\.[1-9][0-9]*-rc\.[1-9][0-9]*$ ]]
+          test "$(jq --raw-output '.candidateVersion' release-manifest.json)" = \
+            "${PRERELEASE_TAG}"
+          source_commit="$(jq --raw-output '.fork.sourceCommit' release-manifest.json)"
+          test "$(jq --raw-output '.fork.dirty' release-manifest.json)" = "false"
+          test "$(jq --raw-output '.publication.gitTagCreated' release-manifest.json)" = "false"
+          test "$(jq --raw-output '.publication.githubReleaseCreated' release-manifest.json)" = "false"
+          run_commit="$(gh run view "${CANDIDATE_RUN_ID}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json headSha \
+            --jq '.headSha')"
+          test "${source_commit}" = "${run_commit}"
+          shasum -a 256 -c SHA256SUMS
+          if gh release view "${PRERELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1; then
+            echo "Release ${PRERELEASE_TAG} already exists." >&2
+            exit 1
+          fi
+          if git ls-remote --exit-code --tags origin \
+            "refs/tags/${PRERELEASE_TAG}" >/dev/null 2>&1; then
+            echo "Tag ${PRERELEASE_TAG} already exists without a release." >&2
+            exit 1
+          fi
+          echo "source_commit=${source_commit}" >> "${GITHUB_OUTPUT}"
+
+      - name: Package consumer downloads
+        shell: bash
+        env:
+          PRERELEASE_TAG: ${{ inputs.prerelease-tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/release-assets
+          tar -C dist/release-candidate -czf \
+            "dist/release-assets/arasan-chess-sdk-${PRERELEASE_TAG}.tar.gz" .
+          for platform in apple android wasm; do
+            tar -C dist/release-candidate -czf \
+              "dist/release-assets/arasan-chess-sdk-${PRERELEASE_TAG}-${platform}.tar.gz" \
+              "${platform}"
+          done
+          cp dist/release-candidate/SHA256SUMS dist/release-assets/SHA256SUMS
+          cp dist/release-candidate/release-manifest.json \
+            dist/release-assets/release-manifest.json
+
+      - name: Publish immutable-coordinate prerelease
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PRERELEASE_TAG: ${{ inputs.prerelease-tag }}
+          SOURCE_COMMIT: ${{ steps.candidate.outputs.source_commit }}
+        run: |
+          set -euo pipefail
+          gh release create "${PRERELEASE_TAG}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --target "${SOURCE_COMMIT}" \
+            --prerelease \
+            --title "Arasan SDK ${PRERELEASE_TAG}" \
+            --notes "Checksummed Apple, Android, and WebAssembly preview built and smoke-tested together. Physical Apple and Android validation is still required before a stable release." \
+            dist/release-assets/*
+          echo "Published ${PRERELEASE_TAG} from ${SOURCE_COMMIT}." >> \
+            "${GITHUB_STEP_SUMMARY}"

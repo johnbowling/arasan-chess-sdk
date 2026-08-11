@@ -6,9 +6,10 @@ one manual run proves that Native, Apple, Android, and WebAssembly all pass at
 the same fork commit, then assembles their output into one checksummed candidate.
 
 The candidate workflow is deliberately non-publishing. It does not create a
-tag, GitHub release, pull request, package-registry entry, or commit. Stable
-publication remains a separate, explicit owner decision after physical-device
-validation.
+tag, GitHub release, pull request, package-registry entry, or commit. A second
+manual workflow may promote the exact retained bytes to a GitHub prerelease so
+consumer CI has a durable coordinate. Stable publication remains a separate,
+explicit owner decision after physical-device validation.
 
 ## Build a candidate
 
@@ -21,7 +22,9 @@ v26.0-embed.1-rc.1
 ```
 
 If the version is omitted, the assembler uses `v<arasan-version>-embed.1-rc.1`.
-The label describes the candidate artifact only; it is not a Git tag.
+The label describes the candidate artifact and is not initially a Git tag. It
+becomes a tag only if an owner explicitly promotes that successful run through
+the prerelease workflow.
 
 The workflow calls the repository's existing validation workflows rather than
 maintaining a second build implementation. Assembly begins only after:
@@ -53,8 +56,26 @@ consumer package to expose the opening-book capability, and requires every
 package to report a clean source checkout.
 
 Actions retains the dry-run candidate for 90 days. Consumers must not depend on
-that expiring URL. A future publication step will attach the same validated
-contract to an immutable downstream GitHub release.
+that expiring URL.
+
+## Publish a consumer prerelease
+
+After a candidate passes and a consumer needs stable downloads, open
+**Actions → Publish SDK prerelease → Run workflow** on `main`. Supply the
+successful candidate workflow run ID and its exact candidate version. The
+workflow:
+
+1. confirms the referenced run is a successful **Release candidate** run;
+2. downloads its retained unified artifact without rebuilding source;
+3. matches the requested tag, workflow commit, release manifest, and clean-tree
+   marker;
+4. verifies every entry in `SHA256SUMS`;
+5. refuses to overwrite an existing tag or release; and
+6. creates a GitHub prerelease with unified and per-platform archives.
+
+Prerelease tags retain the `-rc.N` suffix. They are durable consumer
+coordinates, not stable-release approval, and publish nothing to CocoaPods,
+Maven, npm, or another registry.
 
 ## Promotion gates
 
