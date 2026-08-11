@@ -25,9 +25,10 @@ included Swift application:
 ./platforms/apple/run-smoke.sh
 ```
 
-The smoke application imports the packaged C module from Swift and validates
-UCI startup, a three-line MultiPV search, cancellation of an infinite search,
-opening-book lookup, shutdown, reinitialization, and a second bounded search.
+The smoke application imports the packaged C module from Swift, links it by
+the public `arasan_embed` library name, and validates UCI startup, a three-line
+MultiPV search, cancellation of an infinite search, opening-book lookup,
+shutdown, reinitialization, and a second bounded search.
 
 On Apple Silicon, set `ARASAN_APPLE_X86_64_SIMULATOR=0` to omit the Intel
 simulator slice. Set `ARASAN_IOS_DEPLOYMENT_TARGET` to raise (but not lower)
@@ -36,6 +37,8 @@ the deployment target.
 The package is written to `dist/apple`:
 
 - `Arasan.xcframework` is the static library and public C header.
+- Every XCFramework slice exposes the stable `libarasan_embed.a` basename so
+  Xcode and CocoaPods consumers resolve the same module link name.
 - `resources/arasan.nnue` is the required network resource.
 - `resources/book.bin` is the required opening-book resource.
 - `manifest.json` records source/toolchain provenance and SHA-256 checksums.

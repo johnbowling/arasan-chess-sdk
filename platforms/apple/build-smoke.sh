@@ -42,8 +42,9 @@ xcrun --sdk iphonesimulator swiftc \
     -sdk "${sdk_path}" \
     -target "${host_architecture}-apple-ios${deployment_target}-simulator" \
     -I "${simulator_slice}/Headers" \
+    -L "${simulator_slice}" \
     "${script_dir}/smoke/AppDelegate.swift" \
-    "${simulator_library}" \
+    -larasan_embed \
     -lc++ \
     -framework UIKit \
     -o "${app_dir}/ArasanAppleSmoke"

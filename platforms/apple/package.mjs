@@ -40,6 +40,17 @@ if (
 const stagingDir = await mkdtemp(join(tmpdir(), "arasan-apple-package-"));
 await mkdir(join(stagingDir, "include"), { recursive: true });
 await mkdir(join(stagingDir, "resources"), { recursive: true });
+const normalizedLibraries = join(stagingDir, ".libraries");
+const normalizedDeviceLibrary = join(normalizedLibraries, "device", "libarasan_embed.a");
+const normalizedSimulatorLibrary = join(
+  normalizedLibraries,
+  "simulator",
+  "libarasan_embed.a",
+);
+await mkdir(dirname(normalizedDeviceLibrary), { recursive: true });
+await mkdir(dirname(normalizedSimulatorLibrary), { recursive: true });
+await cp(deviceLibrary, normalizedDeviceLibrary);
+await cp(simulatorLibrary, normalizedSimulatorLibrary);
 
 await cp(join(repoDir, "src", "embed", "arasan_embed.h"), join(stagingDir, "include", "arasan_embed.h"));
 await cp(join(scriptDir, "include", "module.modulemap"), join(stagingDir, "include", "module.modulemap"));
@@ -61,11 +72,11 @@ const createResult = spawnSync(
   [
     "-create-xcframework",
     "-library",
-    deviceLibrary,
+    normalizedDeviceLibrary,
     "-headers",
     join(stagingDir, "include"),
     "-library",
-    simulatorLibrary,
+    normalizedSimulatorLibrary,
     "-headers",
     join(stagingDir, "include"),
     "-output",
@@ -81,6 +92,7 @@ if (createResult.status !== 0) {
 }
 
 await rm(join(stagingDir, "include"), { recursive: true, force: true });
+await rm(normalizedLibraries, { recursive: true, force: true });
 
 async function collectFiles(directory) {
   const files = [];
