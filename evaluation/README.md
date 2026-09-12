@@ -33,9 +33,12 @@ binary, settings, and host metadata are recorded in `manifest.json`, along with
 SHA-256 hashes of the engine, opening set, and fastchess binary.
 After each match, the runner refreshes `summary.json` and `summary.md`. The
 summary evaluates the higher preset using fastchess's pentanomial paired-game
-scores and a 95% normal-approximation confidence interval. This preserves the
+scores and a bounded Wilson-style 95% interval. This preserves the
 color-swapped opening as the statistical unit instead of pretending its two
-games are independent.
+games are independent. It also avoids the zero-width interval produced by a
+raw plug-in variance when every sampled pair has the same outcome. The report
+retains fastchess-style likelihood of superiority (LOS) as a diagnostic but
+does not use it as the pass/fail gate.
 
 The Algorithm lane reduces hardware sensitivity; it does not make runs fully
 deterministic because Arasan's weaker-move selection is probabilistic. The

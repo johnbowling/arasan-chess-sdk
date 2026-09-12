@@ -34,6 +34,24 @@ def _round(value: float) -> float:
     return round(value, 6)
 
 
+def score_interval(score: float, pairs: int) -> tuple[float, float]:
+    """Return a Wilson-style interval treating each paired score as one unit.
+
+    A pair score is bounded from zero to one. Using the Bernoulli variance for
+    that mean is conservative for fractional outcomes and, unlike the raw
+    plug-in pentanomial variance, does not collapse after an all-win sample.
+    """
+    squared_z = CI95_Z_SCORE**2
+    denominator = 1.0 + squared_z / pairs
+    center = (score + squared_z / (2.0 * pairs)) / denominator
+    margin = (
+        CI95_Z_SCORE
+        * math.sqrt(score * (1.0 - score) / pairs + squared_z / (4.0 * pairs**2))
+        / denominator
+    )
+    return max(0.0, center - margin), min(1.0, center + margin)
+
+
 def summarize_stats(stats: dict[str, Any], expected_games: int) -> dict[str, Any]:
     """Summarize paired statistics from the higher preset's perspective."""
     integer_fields = (
@@ -92,9 +110,7 @@ def summarize_stats(stats: dict[str, Any], expected_games: int) -> dict[str, Any
         higher_penta[key] / pairs * (weights[key] - score) ** 2 for key in weights
     )
     standard_error = math.sqrt(variance / pairs)
-    margin = CI95_Z_SCORE * standard_error
-    raw_lower = score - margin
-    raw_upper = score + margin
+    lower, upper = score_interval(score, pairs)
 
     if standard_error == 0:
         los = 1.0 if score > 0.5 else 0.0 if score < 0.5 else 0.5
@@ -104,9 +120,9 @@ def summarize_stats(stats: dict[str, Any], expected_games: int) -> dict[str, Any
 
     if not complete:
         status = "incomplete"
-    elif raw_lower > 0.5:
+    elif lower > 0.5:
         status = "pass"
-    elif raw_upper <= 0.5:
+    elif upper <= 0.5:
         status = "fail"
     else:
         status = "inconclusive"
@@ -122,8 +138,8 @@ def summarize_stats(stats: dict[str, Any], expected_games: int) -> dict[str, Any
         "higherLosses": stats["wins"],
         "higherScore": _round(score),
         "higherScoreCi95": {
-            "lower": _round(max(0.0, raw_lower)),
-            "upper": _round(min(1.0, raw_upper)),
+            "lower": _round(lower),
+            "upper": _round(upper),
         },
         "higherLosPercent": _round(100.0 * los),
         "higherPentanomial": higher_penta,
@@ -193,7 +209,7 @@ def build_summary(results_directory: Path) -> dict[str, Any]:
         "manifest": str((results_directory / "manifest.json").resolve()),
         "method": {
             "unit": "paired openings",
-            "confidenceInterval": "normal approximation over pentanomial pair scores",
+            "confidenceInterval": "Wilson-style interval over bounded paired-opening scores",
             "pass": "higher preset's 95% score interval is entirely above 50%",
             "fail": "higher preset's 95% score interval is at or below 50%",
         },
@@ -210,7 +226,8 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"Overall status: **{summary['status']}**",
         "",
         "The score and confidence interval are for the higher preset. Results use paired",
-        "openings; `W-D-L` is shown from that preset's perspective.",
+        "openings; `W-D-L` is shown from that preset's perspective. LOS is the",
+        "fastchess-style pentanomial normal approximation and is not the pass/fail gate.",
         "",
         "| Lane | Matchup | W-D-L | Score (95% CI) | LOS | Status |",
         "| --- | --- | ---: | ---: | ---: | --- |",

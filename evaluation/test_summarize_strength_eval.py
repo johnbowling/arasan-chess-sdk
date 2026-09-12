@@ -31,6 +31,8 @@ class StrengthSummaryTest(unittest.TestCase):
         self.assertEqual(result["higherWins"], 20)
         self.assertEqual(result["higherScore"], 1.0)
         self.assertEqual(result["higherLosPercent"], 100.0)
+        self.assertGreater(result["higherScoreCi95"]["lower"], 0.5)
+        self.assertLess(result["higherScoreCi95"]["lower"], 1.0)
 
     def test_reports_fail_when_higher_preset_is_confidently_worse(self):
         result = subject.summarize_stats(
