@@ -19,6 +19,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
+from summarize_strength_eval import SummaryError, write_summary
+
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG = SCRIPT_DIR / "sixtyfour-strength.json"
@@ -485,9 +487,10 @@ def main(argv: list[str] | None = None) -> int:
                     file=sys.stderr,
                 )
                 return result.returncode
+            write_summary(args.output_directory)
         print(f"Evaluation complete: {args.output_directory}")
         return 0
-    except (ConfigError, json.JSONDecodeError, OSError) as error:
+    except (ConfigError, SummaryError, json.JSONDecodeError, OSError) as error:
         print(f"error: {error}", file=sys.stderr)
         return 2
 

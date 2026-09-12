@@ -31,6 +31,11 @@ different questions:
 opening is played twice with colors reversed. The lane, opening seed, engine
 binary, settings, and host metadata are recorded in `manifest.json`, along with
 SHA-256 hashes of the engine, opening set, and fastchess binary.
+After each match, the runner refreshes `summary.json` and `summary.md`. The
+summary evaluates the higher preset using fastchess's pentanomial paired-game
+scores and a 95% normal-approximation confidence interval. This preserves the
+color-swapped opening as the statistical unit instead of pretending its two
+games are independent.
 
 The Algorithm lane reduces hardware sensitivity; it does not make runs fully
 deterministic because Arasan's weaker-move selection is probabilistic. The
@@ -43,12 +48,12 @@ searches could spend minutes on the first move of Elite versus Maximum. Depth
 16 preserves headroom above every limited preset's internal cap while keeping
 Maximum useful in routine evaluation runs.
 
-For each pair within each lane, interpret the higher preset's result this way:
+For each comparison within each lane, interpret the higher preset's paired-game
+score this way:
 
-- **pass:** its estimated Elo advantage is positive and the lower end of the
-  95% confidence interval is above zero;
-- **fail:** the upper end of the 95% confidence interval is zero or lower;
-- **inconclusive:** the interval spans zero, so run more paired openings.
+- **pass:** the lower end of its 95% confidence interval is above 50%;
+- **fail:** the upper end of its 95% confidence interval is 50% or lower;
+- **inconclusive:** the interval spans 50%, so run more paired openings.
 
 The checked-in default is a 200-opening-pair pilot, or 400 games per adjacent
 comparison. It is a smoke test for ordering, not a permanent sample-size claim.
@@ -151,4 +156,10 @@ Run the harness unit tests with:
 
 ```sh
 python3 -m unittest discover -s evaluation -p 'test_*.py'
+```
+
+Regenerate a summary for an existing or interrupted run with:
+
+```sh
+python3 evaluation/summarize_strength_eval.py /absolute/path/to/results
 ```
