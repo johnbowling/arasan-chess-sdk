@@ -69,6 +69,7 @@ class StrengthEvaluationTest(unittest.TestCase):
 
         self.assertEqual(command.count("-engine"), 2)
         self.assertIn("st=0.65", command)
+        self.assertEqual(command.count("timemargin=100"), 2)
         self.assertIn("option.Hash=32", command)
         self.assertIn("option.Position learning=false", command)
         self.assertIn("option.UCI_Elo=2800", command)

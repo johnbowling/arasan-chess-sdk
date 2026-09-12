@@ -71,6 +71,11 @@ def validate_config(config: dict[str, Any]) -> None:
             value = search.get("value")
         elif search_type == "movetime":
             value = search.get("milliseconds")
+            margin = search.get("marginMilliseconds")
+            if not isinstance(margin, int) or margin < 0:
+                raise ConfigError(
+                    f"lanes[{index}].search.marginMilliseconds must be a non-negative integer"
+                )
         else:
             raise ConfigError(f"unsupported lane search type: {search_type}")
         if not isinstance(value, int) or value <= 0:
@@ -176,6 +181,7 @@ def engine_arguments(
     else:
         move_time_seconds = search["milliseconds"] / 1000
         arguments.append(f"st={move_time_seconds:g}")
+        arguments.append(f"timemargin={search['marginMilliseconds']}")
     for name, value in config["engineOptions"].items():
         rendered = str(value).lower() if isinstance(value, bool) else str(value)
         arguments.append(f"option.{name}={rendered}")

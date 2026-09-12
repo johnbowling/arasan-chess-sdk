@@ -23,7 +23,8 @@
       "purpose": "Mirror SixtyFour's shipped no-clock opponent response budget.",
       "search": {
         "type": "movetime",
-        "milliseconds": 650
+        "milliseconds": 650,
+        "marginMilliseconds": 100
       }
     }
   ],

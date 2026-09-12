@@ -21,7 +21,9 @@ different questions:
   lower internal strength caps to govern while giving unrestricted Maximum a
   repeatable, practical ceiling. Depth 16 remains above the highest configured
   limited-strength cap of 11 and its two-ply endgame extension;
-- the **Product lane** uses SixtyFour's current 650 ms no-clock response budget;
+- the **Product lane** uses SixtyFour's current 650 ms no-clock response budget,
+  plus a 100 ms match-controller margin that prevents host scheduling jitter
+  from being scored as a chess loss without granting the engine more search;
 - one thread and 32 MB hash;
 - no engine opening book, position learning, or tablebases;
 - single-PV search;
@@ -69,6 +71,11 @@ Arasan intentionally may report the best searched PV and then return a weaker
 `bestmove`; fastchess warns about that mismatch even though it is the algorithm
 being evaluated. Match logs are retained so unexpected warnings can still be
 reviewed.
+
+The Product lane passes `st=0.65` to each engine and `timemargin=100` only to
+fastchess's deadline enforcement. A ladder pilot without that margin produced
+several false time losses for one- and two-millisecond overruns. Actual search
+time and latency remain in the PGN and logs so regressions are still visible.
 
 An Algorithm-lane pass with a Product-lane failure points to the response
 budget or runtime performance rather than the intended strength ordering. A
