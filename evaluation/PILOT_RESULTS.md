@@ -49,10 +49,42 @@ or unsupported-option failures.
 
 This is encouraging evidence that the configured ladder is directionally
 correct, not a complete certification. Ten paired openings leave wide intervals.
-The next efficient run should increase the sample only for the five inconclusive
-comparisons, using the same binary, corpus, settings, and seed. A release gate
-should eventually use the checked-in 200-pair default across the full ladder.
+The next efficient run was therefore limited to the five inconclusive
+comparisons, using the same binary, corpus, settings, and seed.
 
 The raw PGNs, logs, manifest, fastchess JSON, and generated summaries are kept
 outside Git in the workspace artifact directory
 `artifacts/strength-eval-pilot-2026-09-12`.
+
+## Targeted follow-up
+
+The three inconclusive Algorithm matchups were rerun with 100 paired openings
+(200 games) each. The two inconclusive Product matchups were rerun with 30
+paired openings (60 games) each.
+
+| Lane | Matchup | Higher W-D-L | Score (95% CI) | Result |
+| --- | --- | ---: | ---: | --- |
+| Algorithm | Club -> Strong Club | 165-8-27 | 84.5% (76.1%-90.3%) | Pass |
+| Algorithm | Expert -> Master | 157-13-30 | 81.8% (73.1%-88.1%) | Pass |
+| Algorithm | Master -> Elite | 125-49-26 | 74.8% (65.4%-82.2%) | Pass |
+| Product | Strong Club -> Expert | 48-2-10 | 81.7% (64.5%-91.6%) | Pass |
+| Product | Master -> Elite | 41-13-6 | 79.2% (61.8%-89.9%) | Pass |
+
+All five follow-up comparisons passed, with no hard failures in 720 follow-up
+games. Combined with the seven pilot passes, every adjacent difficulty
+transition now has a passing result in both the depth-controlled Algorithm lane
+and the 650 ms Product lane.
+
+The follow-up used the same seed, so each larger sample contains the pilot's
+first 10 opening pairs. The runs must not be pooled as independent samples; the
+follow-up result replaces the smaller result for each repeated comparison.
+
+The follow-up artifacts are kept outside Git in:
+
+- `artifacts/strength-eval-followup-algorithm-2026-09-12`
+- `artifacts/strength-eval-followup-product-2026-09-12`
+
+This establishes monotonic ordering for this engine binary, opening corpus,
+host, and the two tested search controls. A release gate should still use the
+checked-in 200-pair default across the full ladder, and platform-parity runs are
+still required for time-based behavior on other release backends.
