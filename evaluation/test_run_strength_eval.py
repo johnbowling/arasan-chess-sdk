@@ -143,8 +143,6 @@ class StrengthEvaluationTest(unittest.TestCase):
                         "/missing/fastchess",
                         "--engine",
                         "/missing/arasan",
-                        "--openings",
-                        "/missing/openings.epd",
                         "--output-directory",
                         str(output),
                         "--pair",
@@ -155,10 +153,23 @@ class StrengthEvaluationTest(unittest.TestCase):
         plan = json.loads(rendered.getvalue())
         self.assertEqual(len(plan["matches"]), 2)
         self.assertEqual(plan["matches"][0]["id"], "algorithm__casual_vs_club")
+        self.assertEqual(plan["inputs"]["openings"]["path"], str(subject.DEFAULT_OPENINGS))
+        self.assertEqual(
+            plan["openingSuite"]["id"], "official-stockfish-4mvs-90-99"
+        )
 
     def test_checked_in_config_is_valid_json(self):
         with subject.DEFAULT_CONFIG.open(encoding="utf-8") as handle:
             self.assertEqual(json.load(handle)["schemaVersion"], 1)
+
+    def test_bundled_opening_suite_matches_pinned_config(self):
+        suite = self.config["openingSuite"]
+        suite_path = subject.SCRIPT_DIR / suite["file"]
+        self.assertEqual(suite_path, subject.DEFAULT_OPENINGS)
+        self.assertEqual(subject.sha256(suite_path), suite["sha256"])
+        positions = suite_path.read_text(encoding="ascii").splitlines()
+        self.assertEqual(len(positions), suite["positions"])
+        self.assertTrue(all(len(position.split()) == 6 for position in positions))
 
     def test_plan_overrides_are_recorded(self):
         rendered = io.StringIO()
@@ -193,6 +204,7 @@ class StrengthEvaluationTest(unittest.TestCase):
         self.assertEqual(plan["study"]["openingPairs"], 2)
         self.assertEqual(plan["study"]["concurrency"], 3)
         self.assertEqual(plan["study"]["openingSeed"], 42)
+        self.assertEqual(plan["openingSuite"], {"id": "custom", "format": "epd"})
         lanes = {lane["id"]: lane for lane in plan["lanes"]}
         self.assertEqual(lanes["algorithm"]["search"]["value"], 18)
         self.assertEqual(lanes["product"]["search"]["milliseconds"], 500)

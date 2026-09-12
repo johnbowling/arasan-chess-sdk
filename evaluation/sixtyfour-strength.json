@@ -7,6 +7,18 @@
     "concurrency": 1,
     "maxMoves": 300
   },
+  "openingSuite": {
+    "id": "official-stockfish-4mvs-90-99",
+    "file": "openings/4mvs_+90_+99.epd",
+    "format": "epd",
+    "positions": 635,
+    "plies": 8,
+    "sha256": "13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317",
+    "sourceRepository": "https://github.com/official-stockfish/books",
+    "sourceRevision": "65815ccdbc7727cd4f6aee252ba8f67fb740e92f",
+    "sourceArchiveSha256": "733be6809d849e75d590e1fce7dea1540aecac5b2d89b15cda50969e269c1989",
+    "license": "CC0-1.0"
+  },
   "lanes": [
     {
       "id": "algorithm",

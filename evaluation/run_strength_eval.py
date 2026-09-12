@@ -24,6 +24,7 @@ from summarize_strength_eval import SummaryError, write_summary
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DEFAULT_CONFIG = SCRIPT_DIR / "sixtyfour-strength.json"
+DEFAULT_OPENINGS = SCRIPT_DIR / "openings/4mvs_+90_+99.epd"
 
 
 class ConfigError(ValueError):
@@ -47,6 +48,27 @@ def validate_config(config: dict[str, Any]) -> None:
     for key in ("openingPairs", "openingSeed", "concurrency", "maxMoves"):
         if not isinstance(study.get(key), int) or study[key] <= 0:
             raise ConfigError(f"study.{key} must be a positive integer")
+
+    opening_suite = config.get("openingSuite")
+    if not isinstance(opening_suite, dict):
+        raise ConfigError("openingSuite must be an object")
+    for key in (
+        "id",
+        "file",
+        "format",
+        "sha256",
+        "sourceRepository",
+        "sourceRevision",
+        "sourceArchiveSha256",
+        "license",
+    ):
+        if not isinstance(opening_suite.get(key), str) or not opening_suite[key]:
+            raise ConfigError(f"openingSuite.{key} must be a non-empty string")
+    for key in ("positions", "plies"):
+        if not isinstance(opening_suite.get(key), int) or opening_suite[key] <= 0:
+            raise ConfigError(f"openingSuite.{key} must be a positive integer")
+    if opening_suite["format"] != "epd":
+        raise ConfigError("openingSuite.format must be epd")
 
     lanes = config.get("lanes")
     if not isinstance(lanes, list) or not lanes:
@@ -316,6 +338,11 @@ def build_manifest(
             "engineDirectory": str(args.engine_directory),
             "openings": file_record(args.openings, include_hashes),
         },
+        "openingSuite": (
+            config["openingSuite"]
+            if args.uses_configured_openings
+            else {"id": "custom", "format": "epd"}
+        ),
         "study": config["study"],
         "lanes": config["lanes"],
         "engineOptions": config["engineOptions"],
@@ -331,7 +358,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--fastchess", type=Path, required=True)
     parser.add_argument("--engine", type=Path, required=True)
     parser.add_argument("--engine-directory", type=Path)
-    parser.add_argument("--openings", type=Path, required=True)
+    parser.add_argument(
+        "--openings",
+        type=Path,
+        help="EPD opening suite (defaults to the suite pinned by --config)",
+    )
     parser.add_argument("--output-directory", type=Path, required=True)
     parser.add_argument("--opening-pairs", type=int, help="override the configured pair count")
     parser.add_argument("--concurrency", type=int, help="override the configured concurrency")
@@ -403,7 +434,8 @@ def main(argv: list[str] | None = None) -> int:
     args.config = args.config.resolve()
     args.fastchess = args.fastchess.resolve()
     args.engine = args.engine.resolve()
-    args.openings = args.openings.resolve()
+    if args.openings is not None:
+        args.openings = args.openings.resolve()
     args.output_directory = args.output_directory.resolve()
     args.engine_directory = (
         args.engine_directory.resolve() if args.engine_directory else args.engine.parent
@@ -412,6 +444,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         require_file(args.config, "config")
         config = load_config(args.config)
+        args.uses_configured_openings = args.openings is None
+        if args.uses_configured_openings:
+            configured_openings = Path(config["openingSuite"]["file"])
+            if not configured_openings.is_absolute():
+                configured_openings = args.config.parent / configured_openings
+            args.openings = configured_openings.resolve()
         for argument_name, config_name in (
             ("opening_pairs", "openingPairs"),
             ("concurrency", "concurrency"),
@@ -439,6 +477,13 @@ def main(argv: list[str] | None = None) -> int:
             require_file(args.fastchess, "fastchess", executable=True)
             require_file(args.engine, "engine", executable=True)
             require_file(args.openings, "openings")
+            if args.uses_configured_openings:
+                expected_openings_hash = config["openingSuite"]["sha256"]
+                actual_openings_hash = sha256(args.openings)
+                if actual_openings_hash != expected_openings_hash:
+                    raise ConfigError(
+                        "configured opening suite hash does not match the pinned configuration"
+                    )
             if not args.engine_directory.is_dir():
                 raise ConfigError(f"engine directory does not exist: {args.engine_directory}")
 

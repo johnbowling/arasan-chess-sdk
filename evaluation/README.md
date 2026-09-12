@@ -27,6 +27,8 @@ different questions:
 - the **Product lane** uses SixtyFour's current 650 ms no-clock response budget,
   plus a 100 ms match-controller margin that prevents host scheduling jitter
   from being scored as a chess loss without granting the engine more search;
+- the bundled, CC0-licensed Stockfish `4mvs_+90_+99.epd` suite provides 635
+  positions reached after eight plies;
 - one thread and 32 MB hash;
 - no engine opening book, position learning, or tablebases;
 - single-PV search;
@@ -119,12 +121,13 @@ Build or obtain:
 
 1. a native UCI executable built from the same Arasan source revision and
    release flags as the SixtyFour SDK artifact under test;
-2. a pinned fastchess binary;
-3. a licensed, versioned EPD opening set with varied, balanced positions.
+2. a pinned fastchess binary.
 
-The opening corpus is deliberately not checked in here until its provenance,
-license, and selection policy are documented. Tactical EPD suites in `tests/`
-are not a substitute for a match opening set.
+The default opening suite is checked in under `evaluation/openings/`, together
+with its CC0 license, pinned upstream revision, and checksums. It is match input,
+not an Arasan runtime book. Pass `--openings` only to evaluate an explicitly
+chosen alternative corpus; the manifest records its path and hash. Tactical EPD
+suites in `tests/` are not a substitute for a match opening set.
 
 ## Plan a run
 
@@ -135,7 +138,6 @@ binaries or opening file to exist:
 python3 evaluation/run_strength_eval.py plan \
   --fastchess /absolute/path/to/fastchess \
   --engine /absolute/path/to/arasanx-64 \
-  --openings /absolute/path/to/openings.epd \
   --output-directory /absolute/path/to/results
 ```
 

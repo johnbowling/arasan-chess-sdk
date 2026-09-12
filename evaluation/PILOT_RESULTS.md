@@ -22,6 +22,11 @@ Configuration:
 - Algorithm lane: depth 16
 - Product lane: 650 ms per move with a 100 ms controller margin
 
+The pilot used the same official Stockfish suite that is now bundled under
+`evaluation/openings/`. Its recorded hash differs because the downloaded
+upstream EPD used CRLF line endings; Git normalizes the vendored copy to LF
+without changing any position.
+
 The score and 95% interval below are for the higher preset. The interval treats
 each paired opening as one observation.
 
