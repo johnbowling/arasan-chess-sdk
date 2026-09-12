@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "study": {
+    "name": "SixtyFour Arasan difficulty monotonicity",
+    "openingPairs": 200,
+    "openingSeed": 640026,
+    "concurrency": 1,
+    "maxMoves": 300
+  },
+  "lanes": [
+    {
+      "id": "algorithm",
+      "label": "Algorithm",
+      "purpose": "Exercise Arasan's internal strength caps with a hardware-reduced outer depth limit.",
+      "search": {
+        "type": "depth",
+        "value": 24
+      }
+    },
+    {
+      "id": "product",
+      "label": "Product",
+      "purpose": "Mirror SixtyFour's shipped no-clock opponent response budget.",
+      "search": {
+        "type": "movetime",
+        "milliseconds": 650
+      }
+    }
+  ],
+  "arasanRatingModel": {
+    "minimumElo": 1000,
+    "maximumElo": 3450,
+    "minimumStrength": 0,
+    "maximumStrength": 100
+  },
+  "engineOptions": {
+    "Threads": 1,
+    "Hash": 32,
+    "OwnBook": false,
+    "Position learning": false,
+    "Use tablebases": false,
+    "MultiPV": 1
+  },
+  "presets": [
+    {
+      "id": "casual",
+      "label": "Casual",
+      "requestedElo": 1320,
+      "expectedDepthCap": 1
+    },
+    {
+      "id": "club",
+      "label": "Club",
+      "requestedElo": 1600,
+      "expectedDepthCap": 3
+    },
+    {
+      "id": "strong-club",
+      "label": "Strong club",
+      "requestedElo": 1900,
+      "expectedDepthCap": 6
+    },
+    {
+      "id": "expert",
+      "label": "Expert",
+      "requestedElo": 2200,
+      "expectedDepthCap": 9
+    },
+    {
+      "id": "master",
+      "label": "Master",
+      "requestedElo": 2500,
+      "expectedDepthCap": 9
+    },
+    {
+      "id": "elite",
+      "label": "Elite",
+      "requestedElo": 2800,
+      "expectedDepthCap": 11
+    },
+    {
+      "id": "maximum",
+      "label": "Maximum",
+      "requestedElo": null,
+      "expectedDepthCap": null
+    }
+  ]
+}

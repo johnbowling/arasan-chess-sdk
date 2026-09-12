@@ -7,7 +7,9 @@
 > [doc/WASM.md](doc/WASM.md), iOS consumers with
 > [doc/APPLE.md](doc/APPLE.md), and Android consumers with
 > [doc/ANDROID.md](doc/ANDROID.md). Cross-platform candidate assembly is
-> documented in [doc/RELEASES.md](doc/RELEASES.md).
+> documented in [doc/RELEASES.md](doc/RELEASES.md). SixtyFour's reproducible
+> difficulty-study harness is documented in
+> [evaluation/README.md](evaluation/README.md).
 
 Arasan is a chess engine, that is, a console-based program that plays the game of chess.
 
