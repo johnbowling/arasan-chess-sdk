@@ -94,7 +94,7 @@ class StrengthEvaluationTest(unittest.TestCase):
                 higher,
             )
 
-        self.assertEqual(command.count("plies=24"), 2)
+        self.assertEqual(command.count("plies=16"), 2)
         self.assertFalse(any(argument.startswith("st=") for argument in command))
 
     def test_configured_depth_caps_match_arasan_source(self):
@@ -120,6 +120,15 @@ class StrengthEvaluationTest(unittest.TestCase):
                 preset["requestedElo"], self.config["arasanRatingModel"]
             )
             self.assertEqual(preset["expectedDepthCap"], depth_caps[(2 * bucket) // 5])
+
+        highest_extended_cap = max(
+            preset["expectedDepthCap"] + 2
+            for preset in self.config["presets"]
+            if preset["expectedDepthCap"] is not None
+        )
+        self.assertGreaterEqual(
+            self.algorithm_lane["search"]["value"], highest_extended_cap
+        )
 
     def test_plan_mode_does_not_require_binaries_to_exist(self):
         with tempfile.TemporaryDirectory() as temporary_directory:

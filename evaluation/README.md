@@ -17,9 +17,10 @@ the engine-specific fixtures.
 `sixtyfour-strength.json` records the exact V1 difficulty contract and two
 different questions:
 
-- the **Algorithm lane** uses a fixed outer depth of 24, allowing Arasan's
+- the **Algorithm lane** uses a fixed outer depth of 16, allowing Arasan's
   lower internal strength caps to govern while giving unrestricted Maximum a
-  repeatable ceiling;
+  repeatable, practical ceiling. Depth 16 remains above the highest configured
+  limited-strength cap of 11 and its two-ply endgame extension;
 - the **Product lane** uses SixtyFour's current 650 ms no-clock response budget;
 - one thread and 32 MB hash;
 - no engine opening book, position learning, or tablebases;
@@ -35,6 +36,12 @@ The Algorithm lane reduces hardware sensitivity; it does not make runs fully
 deterministic because Arasan's weaker-move selection is probabilistic. The
 Product lane deliberately retains hardware sensitivity because it measures the
 behavior users receive within 650 ms.
+
+The outer depth is intentionally not 24 or another effectively unrestricted
+value. A ladder-wide pilot showed that six concurrent unrestricted depth-24
+searches could spend minutes on the first move of Elite versus Maximum. Depth
+16 preserves headroom above every limited preset's internal cap while keeping
+Maximum useful in routine evaluation runs.
 
 For each pair within each lane, interpret the higher preset's result this way:
 

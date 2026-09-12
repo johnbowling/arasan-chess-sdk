@@ -469,7 +469,15 @@ def main(argv: list[str] | None = None) -> int:
         manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         for match in commands:
             print(f"Running {match['id']}...", flush=True)
-            result = subprocess.run(match["argv"], check=False)
+            try:
+                result = subprocess.run(match["argv"], check=False)
+            except KeyboardInterrupt:
+                print(
+                    f"\nEvaluation interrupted during {match['id']}; "
+                    f"partial artifacts remain in {args.output_directory}",
+                    file=sys.stderr,
+                )
+                return 130
             if result.returncode != 0:
                 print(
                     f"{match['id']} failed with exit code {result.returncode}; "

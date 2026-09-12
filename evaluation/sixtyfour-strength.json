@@ -14,7 +14,7 @@
       "purpose": "Exercise Arasan's internal strength caps with a hardware-reduced outer depth limit.",
       "search": {
         "type": "depth",
-        "value": 24
+        "value": 16
       }
     },
     {
