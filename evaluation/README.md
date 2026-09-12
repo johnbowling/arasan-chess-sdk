@@ -4,6 +4,9 @@ This directory starts a reproducible answer to a product question: does each
 SixtyFour bot difficulty behave like a meaningfully stronger opponent than the
 one below it?
 
+The first end-to-end smoke-study results and their interpretation are recorded
+in [`PILOT_RESULTS.md`](PILOT_RESULTS.md).
+
 It belongs in the Arasan SDK repository for now because the behavior under test
 is the engine's strength-reduction algorithm and SDK build.
 SixtyFour should retain its fast integration tests for protocol wiring, legal
