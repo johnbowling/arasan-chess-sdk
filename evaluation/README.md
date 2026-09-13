@@ -191,7 +191,25 @@ python3 evaluation/summarize_strength_eval.py \
 
 The `Evaluation harness` workflow keeps contract tests lightweight on ordinary
 pushes and pull requests. A manual run enables the full 200-pair Algorithm lane
-by default. The Release candidate workflow requires that full lane to pass and
-retains its manifest, machine-readable summary, Markdown report, PGNs, match
-logs, and console output for 90 days. Fastchess is built from the pinned commit
+by default. The six adjacent matches run in parallel from one uploaded engine
+and fastchess build, so every shard uses identical binaries. A final job rejects
+missing, duplicated, partial, or configuration-incompatible shards before it
+applies the statistical gate. The merged manifest records the host used for
+each match.
+
+The Release candidate workflow requires that full lane to pass and retains its
+merged manifest, machine-readable summary, Markdown report, PGNs, match logs,
+and per-match console output for 90 days. Temporary binary and match-shard
+artifacts expire after one day. Fastchess is built from the pinned commit
 recorded in the workflow.
+
+Downloaded shards can be merged and checked with:
+
+```sh
+python3 evaluation/merge_strength_eval.py \
+  --require-complete-ladder \
+  /absolute/path/to/combined \
+  /absolute/path/to/shards/*
+python3 evaluation/summarize_strength_eval.py \
+  --require-pass /absolute/path/to/combined
+```
