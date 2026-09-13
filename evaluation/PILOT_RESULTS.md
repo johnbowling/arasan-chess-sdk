@@ -222,3 +222,89 @@ The GitHub Actions run is
 [`34735840276`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34735840276).
 Its combined report is retained by GitHub for 90 days. A downloaded copy is
 kept outside Git at `artifacts/calibration-ci-34735840276`.
+
+## 2026-09-13 calibration bracket-search pilot
+
+The first bracket search held each Stockfish target fixed and tested two
+candidate Arasan `UCI_Elo` inputs selected from the baseline. Each candidate
+used 25 paired openings, or 50 color-swapped games, at `120+1`.
+
+Reproducibility inputs:
+
+- SDK revision: `7ff637f2518a2b9b9bf72439079b70d159826b67`
+- config SHA-256:
+  `8965e21f53a837096fd1dad7860c69da990d5f26da037a2ad225c1c9e147f352`
+- Arasan SHA-256:
+  `96feb3fc968d0be9a2606262dde2a92d4b1ca421781c895c6daa1a5b7649b9cf`
+- Stockfish 19 revision: `edb0d9db6731067ec50ce619ff372b463bc4dd5d`
+- Stockfish SHA-256:
+  `ee4d3dd006770a083f635a75af8e74402cc4a7489be3f3353f4728ba2b2a1e5f`
+- fastchess SHA-256:
+  `6c872a7d9143c6d49ef06fe149af032ca07440606f1d7256c2544c788e39c561`
+- opening corpus SHA-256:
+  `13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317`
+- opening seed: `640026`
+- one thread and 32 MB hash per engine, four concurrent games per shard
+
+The Elo delta and interval are from Arasan's perspective. `Bracketed` means the
+candidate point estimates straddled zero; it does not mean either candidate
+passed the equivalence gate.
+
+| Preset target | Arasan input | Arasan W-D-L | Elo delta (95% CI) | Search finding |
+| --- | ---: | ---: | ---: | --- |
+| Casual 1320 | 1600 | 18-1-31 | -92.5 (-229.9 to +45.0) | Bracketed with 1750 |
+| Casual 1320 | 1750 | 24-3-23 | +6.9 (-126.0 to +139.9) | Suggested input 1740 |
+| Club 1600 | 1800 | 9-0-41 | -263.4 (-433.8 to -93.1) | Too weak |
+| Club 1600 | 1950 | 17-1-32 | -107.5 (-246.6 to +31.5) | Expand higher |
+| Strong Club 1900 | 1975 | 10-0-40 | -240.8 (-404.9 to -76.8) | Too weak |
+| Strong Club 1900 | 2125 | 18-0-32 | -100.0 (-238.1 to +38.2) | Expand higher |
+| Expert 2200 | 2150 | 13-1-36 | -172.8 (-321.6 to -24.0) | Bracketed with 2300 |
+| Expert 2200 | 2300 | 47-1-2 | +511.5 (+230.7 to +792.3) | Suggested input 2188 |
+| Master 2500 | 2275 | 39-5-6 | +275.5 (+101.5 to +449.4) | Too strong |
+| Master 2500 | 2425 | 38-4-8 | +240.8 (+76.8 to +404.9) | Expand lower |
+| Elite 2800 | 2425 | 16-9-25 | -63.2 (-198.3 to +71.8) | Too weak |
+| Elite 2800 | 2575 | 18-10-22 | -27.9 (-161.2 to +105.5) | Expand higher |
+
+All 12 match jobs succeeded. All 600 games were present as 300 complete
+color-swapped pairs at `120+1`; all PGN terminations were normal, and no hard
+failures were recorded. The merger verified identical config, Arasan,
+Stockfish, fastchess, and opening hashes across every shard. The workflow took
+1 hour 21 minutes 51 seconds. Its red status is the expected
+`--require-ready` signal that a complete mapping was not yet bracketed, not an
+infrastructure failure.
+
+The original workflow report called Master's small point-estimate decrease
+non-monotonic even though the two wide confidence intervals overlap. Commit
+`50867148` corrected that rule: only a statistically separated decrease is now
+called non-monotonic. Regenerating the report classifies Master as
+`expand-lower` and the overall search as `expand-brackets`.
+
+This run also exposed a device-control issue useful beyond this pilot. The 12
+candidates ran independently across nine AMD EPYC 7763 hosts, two AMD EPYC
+9V74 hosts, and one Intel Xeon Platinum 8573C host. Each individual match is
+internally controlled because both engines share its host, but interpolating
+between candidates on different CPUs adds avoidable variance. Commit
+`50867148` changes future searches to run both candidates for a target
+sequentially on one host.
+
+The next bracket set should be:
+
+| Preset | Next Arasan inputs | Reason |
+| --- | ---: | --- |
+| Casual | 1600, 1750 | Repeat the existing crossing on one host |
+| Club | 1950, 2100 | Extend above two weak candidates |
+| Strong Club | 2125, 2250 | Extend above two weak candidates |
+| Expert | 2150, 2300 | Repeat the existing crossing on one host |
+| Master | 2150, 2275 | Extend below two strong candidates |
+| Elite | 2575, 2800 | Extend to the baseline's stronger point |
+
+The Strong Club and Expert ranges intentionally overlap around Arasan's
+depth-cap transition. The next report must reject the proposed mapping if these
+targets cannot produce strictly increasing inputs and internal buckets. No
+product difficulty value has changed.
+
+The GitHub Actions run is
+[`34771071016`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34771071016).
+Its combined report is retained by GitHub for 90 days. A downloaded and
+post-fix-regenerated copy is kept outside Git at
+`artifacts/calibration-search-ci-34771071016`.
