@@ -50,6 +50,28 @@ class CalibrationRunnerTest(unittest.TestCase):
         self.assertIn("-repeat", command)
         self.assertNotIn("-strict", command)
 
+    def test_search_candidate_holds_reference_target_fixed(self):
+        preset = self.config["presets"][1]
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            command = subject.build_fastchess_command(
+                Path("/tools/fastchess"),
+                Path("/sdk/arasanx"),
+                Path("/sdk"),
+                Path("/reference/stockfish"),
+                Path("/reference"),
+                Path("/data/openings.epd"),
+                Path(temporary_directory),
+                self.config,
+                preset,
+                arasan_elo=1800,
+            )
+
+        self.assertEqual(subject.match_id(preset, 1800), "calibration__club__a1800")
+        self.assertEqual(command.count("option.UCI_Elo=1800"), 1)
+        self.assertEqual(command.count("option.UCI_Elo=1600"), 1)
+        self.assertIn("name=Arasan-club", command)
+        self.assertIn("name=stockfish-19-1600", command)
+
     def test_plan_records_reference_pin_and_overrides(self):
         rendered = io.StringIO()
         with redirect_stdout(rendered):
@@ -85,6 +107,7 @@ class CalibrationRunnerTest(unittest.TestCase):
         self.assertEqual(len(plan["matches"]), 1)
         self.assertEqual(len(plan["presets"]), 6)
         self.assertEqual(plan["matches"][0]["id"], "calibration__casual")
+        self.assertEqual(plan["matches"][0]["arasanElo"], 1320)
         calibration = plan["calibration"]
         self.assertEqual(calibration["openingPairs"], 12)
         self.assertEqual(calibration["concurrency"], 3)
@@ -94,6 +117,53 @@ class CalibrationRunnerTest(unittest.TestCase):
         self.assertEqual(calibration["reference"]["tag"], "sf_19")
         self.assertRegex(calibration["reference"]["revision"], r"^[0-9a-f]{40}$")
         self.assertNotIn("sha256", plan["inputs"]["reference"])
+
+    def test_plan_records_distinct_arasan_search_input(self):
+        rendered = io.StringIO()
+        with redirect_stdout(rendered):
+            exit_code = subject.main(
+                [
+                    "plan",
+                    "--fastchess",
+                    "/missing/fastchess",
+                    "--arasan",
+                    "/missing/arasan",
+                    "--reference",
+                    "/missing/stockfish",
+                    "--output-directory",
+                    "/missing/results",
+                    "--preset",
+                    "casual",
+                    "--arasan-elo",
+                    "1600",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        match = json.loads(rendered.getvalue())["matches"][0]
+        self.assertEqual(match["id"], "calibration__casual__a1600")
+        self.assertEqual(match["requestedElo"], 1320)
+        self.assertEqual(match["arasanElo"], 1600)
+        self.assertEqual(match["referenceElo"], 1320)
+
+    def test_arasan_search_input_requires_one_preset(self):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            exit_code = subject.main(
+                [
+                    "plan",
+                    "--fastchess",
+                    "/missing/fastchess",
+                    "--arasan",
+                    "/missing/arasan",
+                    "--reference",
+                    "/missing/stockfish",
+                    "--output-directory",
+                    "/missing/results",
+                    "--arasan-elo",
+                    "1600",
+                ]
+            )
+        self.assertEqual(exit_code, 2)
 
     def test_bad_time_control_returns_usage_error(self):
         with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):

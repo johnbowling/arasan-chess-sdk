@@ -175,6 +175,20 @@ class StrengthEvaluationTest(unittest.TestCase):
                 self.assertLessEqual(reference["minimumElo"], rating)
                 self.assertGreaterEqual(reference["maximumElo"], rating)
 
+    def test_calibration_search_brackets_every_rated_preset(self):
+        search = self.config["calibration"]["search"]
+        expected = {
+            preset["id"]
+            for preset in self.config["presets"]
+            if preset["requestedElo"] is not None
+        }
+        observed = {candidate["preset"] for candidate in search["candidates"]}
+        self.assertEqual(observed, expected)
+        for candidate in search["candidates"]:
+            values = candidate["arasanEloCandidates"]
+            self.assertGreaterEqual(len(values), 2)
+            self.assertEqual(values, sorted(set(values)))
+
     def test_bundled_opening_suite_matches_pinned_config(self):
         suite = self.config["openingSuite"]
         suite_path = subject.SCRIPT_DIR / suite["file"]

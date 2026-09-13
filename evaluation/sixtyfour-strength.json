@@ -62,6 +62,36 @@
     "maxMoves": 300,
     "timeControl": "120+1",
     "equivalenceToleranceElo": 100,
+    "search": {
+      "name": "SixtyFour Arasan Stockfish calibration bracket search",
+      "openingPairs": 25,
+      "candidates": [
+        {
+          "preset": "casual",
+          "arasanEloCandidates": [1600, 1750]
+        },
+        {
+          "preset": "club",
+          "arasanEloCandidates": [1800, 1950]
+        },
+        {
+          "preset": "strong-club",
+          "arasanEloCandidates": [1975, 2125]
+        },
+        {
+          "preset": "expert",
+          "arasanEloCandidates": [2150, 2300]
+        },
+        {
+          "preset": "master",
+          "arasanEloCandidates": [2275, 2425]
+        },
+        {
+          "preset": "elite",
+          "arasanEloCandidates": [2425, 2575]
+        }
+      ]
+    },
     "reference": {
       "id": "stockfish-19",
       "name": "Stockfish 19",

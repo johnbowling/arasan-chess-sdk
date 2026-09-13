@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Plan or run SixtyFour's Stockfish-anchored Elo calibration matches.
 
-Each rated Arasan preset plays a pinned Stockfish release configured to the
-same UCI_Elo. The resulting score estimates the preset's offset from that
-reference scale; it does not establish human playing strength.
+Each rated Arasan preset plays a pinned Stockfish release. Baseline matches use
+the same UCI_Elo for both engines; bracket-search matches hold the Stockfish
+target fixed while varying Arasan's UCI_Elo. The resulting score estimates the
+preset's offset from that reference scale; it does not establish human playing
+strength.
 """
 
 from __future__ import annotations
@@ -63,8 +65,11 @@ def _engine_arguments(
     return arguments
 
 
-def match_id(preset: dict[str, Any]) -> str:
-    return f"calibration__{preset['id']}"
+def match_id(preset: dict[str, Any], arasan_elo: int | None = None) -> str:
+    target_elo = preset["requestedElo"]
+    if arasan_elo is None or arasan_elo == target_elo:
+        return f"calibration__{preset['id']}"
+    return f"calibration__{preset['id']}__a{arasan_elo}"
 
 
 def build_fastchess_command(
@@ -77,13 +82,15 @@ def build_fastchess_command(
     output_directory: Path,
     config: dict[str, Any],
     preset: dict[str, Any],
+    arasan_elo: int | None = None,
 ) -> list[str]:
     calibration = config["calibration"]
     reference = calibration["reference"]
-    requested_elo = preset["requestedElo"]
-    if requested_elo is None:
+    target_elo = preset["requestedElo"]
+    if target_elo is None:
         raise ConfigError("the unrestricted preset cannot be calibrated to a numeric anchor")
-    run_id = match_id(preset)
+    arasan_elo = target_elo if arasan_elo is None else arasan_elo
+    run_id = match_id(preset, arasan_elo)
     command = [str(fastchess_path), "-engine"]
     command.extend(
         _engine_arguments(
@@ -92,7 +99,7 @@ def build_fastchess_command(
             f"Arasan-{preset['id']}",
             calibration["timeControl"],
             config["engineOptions"],
-            requested_elo,
+            arasan_elo,
         )
     )
     command.append("-engine")
@@ -100,10 +107,10 @@ def build_fastchess_command(
         _engine_arguments(
             reference_path,
             reference_directory,
-            f"{reference['id']}-{requested_elo}",
+            f"{reference['id']}-{target_elo}",
             calibration["timeControl"],
             reference["engineOptions"],
-            requested_elo,
+            target_elo,
         )
     )
     command.extend(
@@ -125,7 +132,8 @@ def build_fastchess_command(
             "-config",
             f"outname={output_directory / (run_id + '.fastchess.json')}",
             "-event",
-            f"{calibration['name']}: {preset['label']} at {requested_elo}",
+            f"{calibration['name']}: {preset['label']} target {target_elo}, "
+            f"Arasan input {arasan_elo}",
             "-pgnout",
             f"file={output_directory / (run_id + '.pgn')}",
             "notation=san",
@@ -245,6 +253,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         default=[],
         help="run only the named rated preset; may be supplied more than once",
     )
+    parser.add_argument(
+        "--arasan-elo",
+        type=int,
+        help="override Arasan's UCI_Elo for one selected preset while keeping its reference target fixed",
+    )
     return parser.parse_args(argv)
 
 
@@ -292,6 +305,16 @@ def main(argv: list[str] | None = None) -> int:
                 raise ConfigError("--time-control must use BASE+INCREMENT seconds")
             calibration["timeControl"] = args.time_control
         presets = select_presets(config["presets"], args.preset)
+        if args.arasan_elo is not None:
+            if len(presets) != 1:
+                raise ConfigError("--arasan-elo requires exactly one --preset")
+            rating_model = config["arasanRatingModel"]
+            if not (
+                rating_model["minimumElo"]
+                <= args.arasan_elo
+                <= rating_model["maximumElo"]
+            ):
+                raise ConfigError("--arasan-elo is outside Arasan's Elo range")
 
         if args.mode == "run":
             require_file(args.fastchess, "fastchess", executable=True)
@@ -326,13 +349,17 @@ def main(argv: list[str] | None = None) -> int:
                 args.output_directory,
                 config,
                 preset,
+                args.arasan_elo,
             )
+            target_elo = preset["requestedElo"]
+            arasan_elo = target_elo if args.arasan_elo is None else args.arasan_elo
             commands.append(
                 {
-                    "id": match_id(preset),
+                    "id": match_id(preset, arasan_elo),
                     "preset": preset["id"],
-                    "requestedElo": preset["requestedElo"],
-                    "referenceElo": preset["requestedElo"],
+                    "requestedElo": target_elo,
+                    "arasanElo": arasan_elo,
+                    "referenceElo": target_elo,
                     "argv": command,
                 }
             )

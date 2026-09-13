@@ -214,6 +214,7 @@ def build_summary(results_directory: Path) -> dict[str, Any]:
                 "id": match_id_value,
                 "preset": match["preset"],
                 "requestedElo": match["requestedElo"],
+                "arasanElo": match.get("arasanElo", match["requestedElo"]),
                 "referenceElo": match["referenceElo"],
                 "result": result,
             }
@@ -251,26 +252,37 @@ def _render_bound(value: float | None, negative: bool) -> str:
 def render_markdown(summary: dict[str, Any]) -> str:
     tolerance = summary["method"]["equivalenceToleranceElo"]
     reference = summary["reference"]
+    is_baseline = all(
+        match.get("arasanElo", match["requestedElo"]) == match["referenceElo"]
+        for match in summary["matches"]
+    )
+    comparison_description = (
+        "same UCI_Elo as each Arasan preset. This measures agreement with Stockfish's"
+        if is_baseline
+        else "fixed target Elo for each preset while Arasan uses candidate UCI_Elo inputs."
+    )
     lines = [
         "# SixtyFour Stockfish-anchored calibration summary",
         "",
         f"Overall status: **{summary['status']}**",
         "",
         f"Reference: {reference['name']} (`{reference['revision']}`), configured to the",
-        "same UCI_Elo as each Arasan preset. This measures agreement with Stockfish's",
-        "documented approximate CCRL Blitz scale; it does **not** establish human Elo.",
+        comparison_description,
+        "This measures agreement with Stockfish's documented approximate CCRL Blitz",
+        "scale; it does **not** establish human Elo.",
         "",
         f"Equivalence band: ±{tolerance} Elo. A pass requires the complete 95% Elo",
         "interval to fit inside that band.",
         "",
-        "| Preset | Target | W-D-L | Score (95% CI) | Elo delta (95% CI) | Anchored estimate (95% CI) | Hard failures | Status |",
-        "| --- | ---: | ---: | ---: | ---: | ---: | --- | --- |",
+        "| Preset | Target | Arasan input | W-D-L | Score (95% CI) | Elo delta (95% CI) | Anchored estimate (95% CI) | Hard failures | Status |",
+        "| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- |",
     ]
     for match in summary["matches"]:
         result = match["result"]
         if not result["complete"]:
             lines.append(
-                f"| {match['preset']} | {match['requestedElo']} | "
+                f"| {match['preset']} | {match['referenceElo']} | "
+                f"{match.get('arasanElo', match['requestedElo'])} | "
                 f"{result['games']}/{result['expectedGames']} games | — | — | — | — | **incomplete** |"
             )
             continue
@@ -301,7 +313,8 @@ def render_markdown(summary: dict[str, Any]) -> str:
             f"{_render_bound(estimate_interval['upper'], False)}"
         )
         lines.append(
-            f"| {match['preset']} | {match['requestedElo']} "
+            f"| {match['preset']} | {match['referenceElo']} "
+            f"| {match.get('arasanElo', match['requestedElo'])} "
             f"| {result['arasanWins']}-{result['draws']}-{result['arasanLosses']} "
             f"| {100 * result['arasanScore']:.1f}% "
             f"({100 * score_interval_value['lower']:.1f}%–{100 * score_interval_value['upper']:.1f}%) "

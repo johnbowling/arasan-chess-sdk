@@ -111,6 +111,42 @@ class MergeCalibrationEvaluationTest(unittest.TestCase):
             with self.assertRaisesRegex(subject.MergeError, "duplicate match id"):
                 subject.merge_shards(root / "merged", [first, second])
 
+    def test_merges_complete_calibration_search(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            shards = []
+            for arasan_elo in (1600, 1750):
+                value = manifest(f"calibration__casual__a{arasan_elo}", "casual")
+                value["matches"][0]["arasanElo"] = arasan_elo
+                value["calibration"]["search"] = {
+                    "candidates": [
+                        {
+                            "preset": "casual",
+                            "arasanEloCandidates": [1600, 1750],
+                        }
+                    ]
+                }
+                shards.append(write_shard(root, str(arasan_elo), value))
+
+            merged = subject.merge_shards(
+                root / "merged", shards, require_complete_search=True
+            )
+
+            self.assertEqual(
+                [match["id"] for match in merged["matches"]],
+                ["calibration__casual__a1600", "calibration__casual__a1750"],
+            )
+
+    def test_rejects_search_id_that_disagrees_with_arasan_elo(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            value = manifest("calibration__casual__a1600", "casual")
+            value["matches"][0]["arasanElo"] = 1750
+            shard = write_shard(root, "bad", value)
+
+            with self.assertRaisesRegex(subject.MergeError, "Arasan Elo disagree"):
+                subject.merge_shards(root / "merged", [shard])
+
 
 if __name__ == "__main__":
     unittest.main()

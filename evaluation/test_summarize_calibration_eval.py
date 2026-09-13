@@ -83,6 +83,38 @@ class CalibrationSummaryTest(unittest.TestCase):
         self.assertLess(result["eloDeltaCi95"]["lower"], -100)
         self.assertGreater(result["eloDeltaCi95"]["upper"], 100)
 
+    def test_search_summary_renders_target_and_distinct_arasan_input(self):
+        value = {
+            "status": "inconclusive",
+            "reference": {
+                "name": "Stockfish 19",
+                "revision": "edb0d9db6731067ec50ce619ff372b463bc4dd5d",
+            },
+            "method": {"equivalenceToleranceElo": 100},
+            "matches": [
+                {
+                    "preset": "club",
+                    "requestedElo": 1600,
+                    "arasanElo": 1800,
+                    "referenceElo": 1600,
+                    "result": subject.summarize_stats(
+                        stats(wins=10, losses=10, penta_WW=5, penta_LL=5),
+                        expected_games=20,
+                        reference_elo=1600,
+                        tolerance_elo=100,
+                    ),
+                }
+            ],
+        }
+        value["matches"][0]["result"]["terminationAudit"] = {
+            "hardFailures": {}
+        }
+
+        markdown = subject.render_markdown(value)
+
+        self.assertIn("| club | 1600 | 1800 |", markdown)
+        self.assertIn("candidate UCI_Elo inputs", markdown)
+
     def test_endpoints_are_json_safe(self):
         result = subject.summarize_stats(
             stats(wins=20, penta_WW=10),

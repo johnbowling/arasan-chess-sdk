@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 
-MATCH_ID_PATTERN = re.compile(r"^calibration__[a-z0-9-]+$")
+MATCH_ID_PATTERN = re.compile(r"^calibration__[a-z0-9-]+(?:__a[0-9]+)?$")
 MATCH_SUFFIXES = ("fastchess.json", "log", "pgn")
 COMPATIBILITY_FIELDS = (
     "evaluationType",
@@ -65,6 +65,36 @@ def expected_match_ids(manifest: dict[str, Any]) -> list[str]:
     return [f"calibration__{preset_id}" for preset_id in preset_ids]
 
 
+def expected_search_match_ids(manifest: dict[str, Any]) -> list[str]:
+    calibration = manifest.get("calibration")
+    search = calibration.get("search") if isinstance(calibration, dict) else None
+    candidates = search.get("candidates") if isinstance(search, dict) else None
+    if not isinstance(candidates, list) or not candidates:
+        raise MergeError("manifest.calibration.search.candidates must contain entries")
+    expected = []
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            raise MergeError("calibration search candidate must be an object")
+        preset = candidate.get("preset")
+        arasan_elos = candidate.get("arasanEloCandidates")
+        if not isinstance(preset, str) or not isinstance(arasan_elos, list):
+            raise MergeError("calibration search candidate is malformed")
+        expected.extend(f"calibration__{preset}__a{elo}" for elo in arasan_elos)
+    return expected
+
+
+def expected_id_for_match(match: dict[str, Any]) -> str:
+    preset = match.get("preset")
+    requested_elo = match.get("requestedElo")
+    arasan_elo = match.get("arasanElo", requested_elo)
+    if not isinstance(preset, str) or not isinstance(requested_elo, int):
+        raise MergeError("match preset and requested Elo are invalid")
+    if not isinstance(arasan_elo, int):
+        raise MergeError("match Arasan Elo is invalid")
+    suffix = "" if arasan_elo == requested_elo else f"__a{arasan_elo}"
+    return f"calibration__{preset}{suffix}"
+
+
 def _assert_compatible(
     baseline: dict[str, Any], candidate: dict[str, Any], shard: Path
 ) -> None:
@@ -81,9 +111,12 @@ def merge_shards(
     output_directory: Path,
     shard_directories: list[Path],
     require_complete_calibration: bool = False,
+    require_complete_search: bool = False,
 ) -> dict[str, Any]:
     if not shard_directories:
         raise MergeError("at least one shard directory is required")
+    if require_complete_calibration and require_complete_search:
+        raise MergeError("choose either the baseline or search completeness check")
     if output_directory.exists() and any(output_directory.iterdir()):
         raise MergeError(f"output directory is not empty: {output_directory}")
 
@@ -107,8 +140,10 @@ def merge_shards(
         match_id = match.get("id") if isinstance(match, dict) else None
         if not isinstance(match_id, str) or not MATCH_ID_PATTERN.fullmatch(match_id):
             raise MergeError(f"invalid match id in {shard / 'manifest.json'}")
-        if match_id != f"calibration__{match.get('preset')}":
-            raise MergeError(f"match id and preset disagree in {shard / 'manifest.json'}")
+        if match_id != expected_id_for_match(match):
+            raise MergeError(
+                f"match id, preset, and Arasan Elo disagree in {shard / 'manifest.json'}"
+            )
         if match_id in matches:
             raise MergeError(f"duplicate match id: {match_id}")
         matches[match_id] = (shard, manifest, match)
@@ -125,7 +160,21 @@ def merge_shards(
             details.append("unexpected: " + ", ".join(unexpected))
         raise MergeError("incomplete calibration (" + "; ".join(details) + ")")
 
-    ordered_ids = [match_id for match_id in expected if match_id in matches]
+    search_expected = (
+        expected_search_match_ids(baseline) if require_complete_search else []
+    )
+    if require_complete_search and set(matches) != set(search_expected):
+        missing = sorted(set(search_expected) - set(matches))
+        unexpected = sorted(set(matches) - set(search_expected))
+        details = []
+        if missing:
+            details.append("missing: " + ", ".join(missing))
+        if unexpected:
+            details.append("unexpected: " + ", ".join(unexpected))
+        raise MergeError("incomplete calibration search (" + "; ".join(details) + ")")
+
+    preferred_order = search_expected if require_complete_search else expected
+    ordered_ids = [match_id for match_id in preferred_order if match_id in matches]
     ordered_ids.extend(sorted(set(matches) - set(ordered_ids)))
     output_directory.mkdir(parents=True, exist_ok=True)
     execution_shards = []
@@ -176,12 +225,18 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="require one shard for every rated preset",
     )
+    parser.add_argument(
+        "--require-complete-search",
+        action="store_true",
+        help="require every configured Arasan Elo search candidate",
+    )
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     try:
         merge_shards(
             args.output_directory.resolve(),
             [path.resolve() for path in args.shard_directories],
             args.require_complete_calibration,
+            args.require_complete_search,
         )
         return 0
     except (MergeError, OSError) as error:

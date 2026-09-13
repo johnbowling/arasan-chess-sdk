@@ -172,6 +172,7 @@ def validate_config(config: dict[str, Any]) -> None:
     if not isinstance(presets, list) or len(presets) < 2:
         raise ConfigError("presets must contain at least two entries")
     seen_ids: set[str] = set()
+    rated_preset_ids: set[str] = set()
     last_rating: int | None = None
     maximum_seen = False
     for index, preset in enumerate(presets):
@@ -205,7 +206,58 @@ def validate_config(config: dict[str, Any]) -> None:
             raise ConfigError("rated presets must be strictly increasing")
         if not isinstance(expected_depth_cap, int) or expected_depth_cap <= 0:
             raise ConfigError(f"preset {preset_id} must have a positive expectedDepthCap")
+        rated_preset_ids.add(preset_id)
         last_rating = rating
+
+    search = calibration.get("search")
+    if not isinstance(search, dict):
+        raise ConfigError("calibration.search must be an object")
+    if not isinstance(search.get("name"), str) or not search["name"]:
+        raise ConfigError("calibration.search.name must be a non-empty string")
+    if not isinstance(search.get("openingPairs"), int) or search["openingPairs"] <= 0:
+        raise ConfigError("calibration.search.openingPairs must be a positive integer")
+    candidates = search.get("candidates")
+    if not isinstance(candidates, list) or not candidates:
+        raise ConfigError("calibration.search.candidates must contain entries")
+    search_preset_ids: set[str] = set()
+    for index, candidate in enumerate(candidates):
+        if not isinstance(candidate, dict):
+            raise ConfigError(f"calibration.search.candidates[{index}] must be an object")
+        preset_id = candidate.get("preset")
+        if preset_id not in rated_preset_ids:
+            raise ConfigError(
+                f"calibration.search.candidates[{index}].preset must name a rated preset"
+            )
+        if preset_id in search_preset_ids:
+            raise ConfigError(f"duplicate calibration search preset: {preset_id}")
+        search_preset_ids.add(preset_id)
+        elo_candidates = candidate.get("arasanEloCandidates")
+        if not isinstance(elo_candidates, list) or len(elo_candidates) < 2:
+            raise ConfigError(
+                f"calibration.search.candidates[{index}].arasanEloCandidates "
+                "must contain at least two integers"
+            )
+        if any(
+            not isinstance(value, int) or value < minimum or value > maximum
+            for value in elo_candidates
+        ):
+            raise ConfigError(
+                f"calibration.search.candidates[{index}] is outside Arasan's Elo range"
+            )
+        if any(
+            lower >= higher
+            for lower, higher in zip(elo_candidates, elo_candidates[1:])
+        ):
+            raise ConfigError(
+                f"calibration.search.candidates[{index}].arasanEloCandidates "
+                "must be strictly increasing"
+            )
+    if search_preset_ids != rated_preset_ids:
+        missing = sorted(rated_preset_ids - search_preset_ids)
+        raise ConfigError(
+            "calibration.search.candidates must cover every rated preset; missing: "
+            + ", ".join(missing)
+        )
 
 
 def strength_bucket(requested_elo: int | None, rating_model: dict[str, int]) -> int:
