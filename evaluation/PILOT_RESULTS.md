@@ -156,3 +156,69 @@ All 10 PGNs had normal terminations and no hard failures.
 The local-only artifacts are kept at
 `artifacts/calibration-smoke-sf19-short`. The earlier interrupted `120+1` smoke
 is retained separately for diagnostics and is not a completed result.
+
+## 2026-09-13 Stockfish-anchored calibration baseline
+
+The first hosted calibration baseline compared all six rated SixtyFour presets
+with Stockfish 19 configured to the same requested Elo. Each match used 50
+paired openings, or 100 color-swapped games, at the checked-in `120+1` clock.
+This measures agreement with Stockfish's approximate CCRL Blitz scale, not
+human Elo.
+
+Reproducibility inputs:
+
+- SDK revision: `e98b9a7e294ba9b33b94528fdd77fd653e4ff91f`
+- config SHA-256:
+  `a8fb5ed3f552111123309524d6850fab69ee2b4b69d448b3cb2ac2ae793ad6b9`
+- Arasan SHA-256:
+  `cd3b1eeec0fdff9bb04e1c7e711583253096d90c7b62d710611c0ceb2683d355`
+- Stockfish 19 revision: `edb0d9db6731067ec50ce619ff372b463bc4dd5d`
+- Stockfish SHA-256:
+  `ee4d3dd006770a083f635a75af8e74402cc4a7489be3f3353f4728ba2b2a1e5f`
+- fastchess SHA-256:
+  `6c872a7d9143c6d49ef06fe149af032ca07440606f1d7256c2544c788e39c561`
+- opening corpus SHA-256:
+  `13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317`
+- opening seed: `640026`
+- one thread and 32 MB hash per engine, four concurrent games per shard
+- six parallel GitHub-hosted Ubuntu x86-64 shards
+
+The score and Elo delta below are from Arasan's perspective. A pass requires
+the complete 95% Elo-delta interval to fit inside the configured +/-100 Elo
+equivalence band.
+
+| Preset | Target | Arasan W-D-L | Score (95% CI) | Elo delta (95% CI) | Anchored estimate (95% CI) | Result |
+| --- | ---: | ---: | ---: | ---: | ---: | --- |
+| Casual | 1320 | 2-0-98 | 2.0% (0.4%-10.5%) | -676.1 (-979.8 to -372.3) | 643.9 (340.2 to 947.7) | Fail |
+| Club | 1600 | 10-0-90 | 10.0% (4.3%-21.4%) | -381.7 (-537.0 to -226.4) | 1218.3 (1063.0 to 1373.6) | Fail |
+| Strong Club | 1900 | 18-1-81 | 18.5% (10.1%-31.4%) | -257.6 (-379.1 to -136.1) | 1642.4 (1520.9 to 1763.9) | Fail |
+| Expert | 2200 | 39-5-56 | 41.5% (28.9%-55.3%) | -59.6 (-156.1 to +36.8) | 2140.4 (2043.9 to 2236.8) | Inconclusive |
+| Master | 2500 | 83-4-13 | 85.0% (72.6%-92.4%) | +301.3 (+169.7 to +433.0) | 2801.3 (2669.7 to 2933.0) | Fail |
+| Elite | 2800 | 65-16-19 | 73.0% (59.4%-83.3%) | +172.8 (+66.0 to +279.6) | 2972.8 (2866.0 to 3079.6) | Inconclusive |
+
+All six match jobs completed successfully. All 600 games were present as 300
+complete color-swapped opening pairs at `120+1`; every PGN termination was
+normal, and the report recorded no hard failures. The merger verified the SDK
+revision and config, Arasan, Stockfish, fastchess, and opening hashes across all
+six shards. The workflow's final report job failed intentionally because the
+statistical `--require-pass` gate observed an overall calibration failure, not
+because of an infrastructure or engine-process failure. Total workflow time was
+2 hours 31 minutes 44 seconds.
+
+This establishes that the ladder is ordered but is not calibrated to the
+pinned Stockfish scale at the current requested values. Casual, Club, and
+Strong Club were clearly weaker than their anchors, while Master was clearly
+stronger. Expert and Elite need more evidence to prove equivalence or mismatch;
+neither passed this strict equivalence test.
+
+The next efficient experiment is not a larger rerun of the four clear
+mismatches. It is a bracketed search that holds each Stockfish target fixed,
+varies the Arasan `UCI_Elo` input, and jointly fits a monotone lookup curve.
+After choosing a candidate mapping, the checked-in 200-pair calibration should
+confirm every level. Product difficulty values remain unchanged until that
+mapping is reviewed.
+
+The GitHub Actions run is
+[`34735840276`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34735840276).
+Its combined report is retained by GitHub for 90 days. A downloaded copy is
+kept outside Git at `artifacts/calibration-ci-34735840276`.
