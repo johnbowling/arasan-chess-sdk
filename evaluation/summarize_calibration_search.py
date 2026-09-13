@@ -15,7 +15,11 @@ from run_strength_eval import bucket_rating, strength_bucket
 from summarize_calibration_eval import SummaryError, write_summary
 
 
-READY_TARGET_STATUSES = {"candidate-passes", "bracketed"}
+READY_TARGET_STATUSES = {
+    "candidate-passes",
+    "candidate-in-band",
+    "bracketed",
+}
 
 
 def _signed_delta(result: dict[str, Any]) -> float:
@@ -110,6 +114,7 @@ def analyze_target(
     target_elo: int,
     matches: list[dict[str, Any]],
     rating_model: dict[str, int],
+    tolerance_elo: int = 100,
 ) -> dict[str, Any]:
     ordered = sorted(matches, key=lambda match: match["arasanElo"])
     candidates = [_candidate_record(match, rating_model) for match in ordered]
@@ -149,6 +154,26 @@ def analyze_target(
             "internalStrengthBucket": bucket,
             "bucketElo": bucket_rating(bucket, rating_model),
             "method": "observed candidate passed the equivalence gate",
+            "bracket": [selected["arasanElo"], selected["arasanElo"]],
+        }
+        return analysis
+
+    in_band = [
+        match
+        for match in ordered
+        if abs(_signed_delta(match["result"])) <= tolerance_elo
+    ]
+    if in_band:
+        selected = min(
+            in_band, key=lambda match: abs(_signed_delta(match["result"]))
+        )
+        bucket = strength_bucket(selected["arasanElo"], rating_model)
+        analysis["status"] = "candidate-in-band"
+        analysis["recommendation"] = {
+            "arasanElo": selected["arasanElo"],
+            "internalStrengthBucket": bucket,
+            "bucketElo": bucket_rating(bucket, rating_model),
+            "method": "candidate point estimate is inside the equivalence band",
             "bracket": [selected["arasanElo"], selected["arasanElo"]],
         }
         return analysis
@@ -236,7 +261,15 @@ def build_search_summary(
             elif match["referenceElo"] != target_elo:
                 raise SummaryError(f"search reference target changed for {preset}")
             matches.append(match)
-        targets.append(analyze_target(preset, target_elo, matches, rating_model))
+        targets.append(
+            analyze_target(
+                preset,
+                target_elo,
+                matches,
+                rating_model,
+                calibration["equivalenceToleranceElo"],
+            )
+        )
 
     target_statuses = {target["status"] for target in targets}
     recommendations = [target["recommendation"] for target in targets]
@@ -337,8 +370,9 @@ def render_markdown(summary: dict[str, Any]) -> str:
     if summary["status"] == "ready-for-confirmation":
         lines.extend(
             [
-                "Every target has an exploratory bracket or passing candidate, and",
-                "the suggested inputs form a strictly increasing bucket mapping.",
+                "Every target has an exploratory in-band candidate, bracket, or",
+                "passing candidate, and the suggested inputs form a strictly",
+                "increasing bucket mapping.",
                 "Run those suggestions through the 200-pair equivalence gate before",
                 "changing product values.",
             ]

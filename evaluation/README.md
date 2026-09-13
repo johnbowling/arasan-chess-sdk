@@ -215,13 +215,15 @@ python3 evaluation/summarize_calibration_search.py \
   /absolute/path/to/combined-search
 ```
 
-The search summary recognizes a directly passing candidate or interpolates
-between adjacent Elo-delta point estimates that straddle zero. It rejects
-missing games and hard terminations, flags a statistically separated decrease
-in a candidate curve, and requires the resulting inputs and internal strength
-buckets to increase across the product ladder. Overlapping confidence intervals
-are treated as sampling uncertainty rather than proof of a reversal.
-`ready-for-confirmation` means only that the exploratory mapping is coherent.
+The search summary recognizes a directly passing candidate, selects the closest
+candidate whose point estimate is inside the declared equivalence band, or
+interpolates between adjacent Elo-delta point estimates that straddle zero. It
+rejects missing games and hard terminations, flags a statistically separated
+decrease in a candidate curve, and requires the resulting inputs and internal
+strength buckets to increase across the product ladder. Overlapping confidence
+intervals are treated as sampling uncertainty rather than proof of a reversal.
+An in-band point estimate remains exploratory when its interval is wider than
+the band. `ready-for-confirmation` means only that the mapping is coherent.
 Product values must not change until those suggested inputs pass the regular
 200-pair equivalence gate.
 

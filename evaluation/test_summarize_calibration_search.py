@@ -35,12 +35,12 @@ class CalibrationSearchSummaryTest(unittest.TestCase):
         analysis = subject.analyze_target(
             "club",
             1600,
-            [match(1600, -100), match(1750, 50)],
+            [match(1600, -150), match(1750, 150)],
             RATING_MODEL,
         )
 
         self.assertEqual(analysis["status"], "bracketed")
-        self.assertEqual(analysis["recommendation"]["arasanElo"], 1700)
+        self.assertEqual(analysis["recommendation"]["arasanElo"], 1675)
         self.assertEqual(analysis["recommendation"]["bracket"], [1600, 1750])
 
     def test_prefers_an_observed_candidate_that_passes_equivalence(self):
@@ -54,11 +54,23 @@ class CalibrationSearchSummaryTest(unittest.TestCase):
         self.assertEqual(analysis["status"], "candidate-passes")
         self.assertEqual(analysis["recommendation"]["arasanElo"], 1750)
 
+    def test_selects_exploratory_candidate_inside_equivalence_band(self):
+        analysis = subject.analyze_target(
+            "club",
+            1600,
+            [match(1950, -107), match(2100, -42, status="inconclusive")],
+            RATING_MODEL,
+        )
+
+        self.assertEqual(analysis["status"], "candidate-in-band")
+        self.assertEqual(analysis["recommendation"]["arasanElo"], 2100)
+        self.assertIn("point estimate", analysis["recommendation"]["method"])
+
     def test_requests_a_higher_bracket_when_every_candidate_is_too_weak(self):
         analysis = subject.analyze_target(
             "club",
             1600,
-            [match(1600, -200), match(1750, -50)],
+            [match(1600, -250), match(1750, -120)],
             RATING_MODEL,
         )
 
@@ -105,6 +117,7 @@ class CalibrationSearchSummaryTest(unittest.TestCase):
             "calibration": {
                 "openingPairs": 25,
                 "timeControl": "120+1",
+                "equivalenceToleranceElo": 100,
                 "search": {
                     "candidates": [
                         {
@@ -124,10 +137,10 @@ class CalibrationSearchSummaryTest(unittest.TestCase):
             ],
         }
         matches = [
-            {**match(1500, -100), "preset": "casual", "referenceElo": 1320},
-            {**match(1650, 50), "preset": "casual", "referenceElo": 1320},
-            match(1800, -50),
-            match(1950, 100),
+            {**match(1500, -150), "preset": "casual", "referenceElo": 1320},
+            {**match(1650, 150), "preset": "casual", "referenceElo": 1320},
+            match(1800, -150),
+            match(1950, 150),
         ]
         summary = subject.build_search_summary(
             manifest,
@@ -137,7 +150,7 @@ class CalibrationSearchSummaryTest(unittest.TestCase):
         self.assertEqual(summary["status"], "ready-for-confirmation")
         self.assertEqual(
             [value["arasanElo"] for value in summary["recommendedMapping"]],
-            [1600, 1850],
+            [1575, 1875],
         )
         self.assertIn("hypotheses", subject.render_markdown(summary))
 
