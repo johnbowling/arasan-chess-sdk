@@ -45,7 +45,9 @@ color-swapped opening as the statistical unit instead of pretending its two
 games are independent. It also avoids the zero-width interval produced by a
 raw plug-in variance when every sampled pair has the same outcome. The report
 retains fastchess-style likelihood of superiority (LOS) as a diagnostic but
-does not use it as the pass/fail gate.
+does not use it as the pass/fail gate. It also audits every PGN termination;
+timeouts, abandoned games, illegal moves, unterminated games, and unknown
+termination types fail the match regardless of its score.
 
 The Algorithm lane reduces hardware sensitivity; it does not make runs fully
 deterministic because Arasan's weaker-move selection is probabilistic. The
@@ -178,3 +180,18 @@ Regenerate a summary for an existing or interrupted run with:
 ```sh
 python3 evaluation/summarize_strength_eval.py /absolute/path/to/results
 ```
+
+Add `--require-pass` when using the summary as a gate. The command returns a
+nonzero status for failed, incomplete, or inconclusive studies:
+
+```sh
+python3 evaluation/summarize_strength_eval.py \
+  --require-pass /absolute/path/to/results
+```
+
+The `Evaluation harness` workflow keeps contract tests lightweight on ordinary
+pushes and pull requests. A manual run enables the full 200-pair Algorithm lane
+by default. The Release candidate workflow requires that full lane to pass and
+retains its manifest, machine-readable summary, Markdown report, PGNs, match
+logs, and console output for 90 days. Fastchess is built from the pinned commit
+recorded in the workflow.

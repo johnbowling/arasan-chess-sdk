@@ -30,8 +30,13 @@ jobs:
   wasm:
     uses: ./.github/workflows/wasm.yml
 
+  evaluation:
+    uses: ./.github/workflows/evaluation.yml
+    with:
+      run_strength_gate: true
+
   assemble:
-    needs: [native, apple, android, wasm]
+    needs: [native, apple, android, wasm, evaluation]
     runs-on: ubuntu-24.04
     timeout-minutes: 10
 

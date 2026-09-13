@@ -2,6 +2,12 @@ name: Evaluation harness
 
 on:
   workflow_call:
+    inputs:
+      run_strength_gate:
+        description: "Run the full 200-pair Algorithm ladder"
+        required: false
+        default: false
+        type: boolean
   push:
     branches: [main, "evaluation/**", "automation/upstream-*"]
     paths:
@@ -16,6 +22,12 @@ on:
       - "src/options.h"
       - "src/search.cpp"
   workflow_dispatch:
+    inputs:
+      run_strength_gate:
+        description: "Run the full 200-pair Algorithm ladder"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: read
@@ -32,3 +44,78 @@ jobs:
       - name: Test evaluation harness
         shell: bash
         run: python3 -m unittest discover -s evaluation -p 'test_*.py'
+
+  algorithm-strength-gate:
+    if: ${{ inputs.run_strength_gate }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+
+    steps:
+      - name: Check out source and test data
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Initialize engine dependency
+        shell: bash
+        run: git submodule update --init src/syzygy
+
+      - name: Build native UCI engine
+        shell: bash
+        run: |
+          set -euo pipefail
+          make -C src -j"$(nproc)" BUILD_TYPE=modern
+          network_path="$(jq --raw-output '.network.sourcePath' sdk/upstream.json)"
+          ln --symbolic --force "../${network_path}" "bin/$(basename "${network_path}")"
+          test -x bin/arasanx-64-modern
+
+      - name: Check out pinned fastchess
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: Disservin/fastchess
+          ref: 60d7a7a26c6b0582a15c112fb29a1829bef2adb3
+          path: .evaluation-tools/fastchess
+          persist-credentials: false
+
+      - name: Build fastchess
+        shell: bash
+        run: make -C .evaluation-tools/fastchess -j"$(nproc)"
+
+      - name: Run 200-pair Algorithm ladder
+        shell: bash
+        run: |
+          set -euo pipefail
+          results_path="artifacts/strength-evaluation"
+          mkdir -p "${results_path}"
+          python3 evaluation/run_strength_eval.py run \
+            --fastchess .evaluation-tools/fastchess/fastchess \
+            --engine bin/arasanx-64-modern \
+            --engine-directory bin \
+            --output-directory "${results_path}" \
+            --opening-pairs 200 \
+            --concurrency "$(nproc)" \
+            --lane algorithm \
+            > "${results_path}/console.log" 2>&1
+
+      - name: Require a passing evaluation
+        shell: bash
+        run: python3 evaluation/summarize_strength_eval.py --require-pass artifacts/strength-evaluation
+
+      - name: Publish evaluation summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ -f artifacts/strength-evaluation/summary.md ]]; then
+            cat artifacts/strength-evaluation/summary.md >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "Strength evaluation did not produce a summary." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload evaluation artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-strength-evaluation-${{ github.sha }}
+          path: artifacts/strength-evaluation
+          if-no-files-found: error
+          retention-days: 90
