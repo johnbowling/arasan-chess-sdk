@@ -4,8 +4,10 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import math
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -13,6 +15,8 @@ from typing import Any
 
 
 CI95_Z_SCORE = 1.959963984540054
+PGN_TERMINATION_PATTERN = re.compile(r'^\[Termination "([^"]+)"\]$', re.MULTILINE)
+NON_FAILURE_TERMINATIONS = {"normal", "adjudication"}
 
 
 class SummaryError(ValueError):
@@ -146,12 +150,42 @@ def summarize_stats(stats: dict[str, Any], expected_games: int) -> dict[str, Any
     }
 
 
+def audit_pgn_terminations(pgn_path: Path, expected_games: int) -> dict[str, Any]:
+    """Count fastchess termination headers and identify engine/runtime failures."""
+    if not pgn_path.is_file():
+        return {
+            "complete": False,
+            "expectedGames": expected_games,
+            "games": 0,
+            "counts": {},
+            "hardFailures": {},
+        }
+    try:
+        pgn = pgn_path.read_text(encoding="utf-8")
+    except OSError as error:
+        raise SummaryError(f"cannot read {pgn_path}: {error}") from error
+    counts = Counter(PGN_TERMINATION_PATTERN.findall(pgn))
+    hard_failures = {
+        termination: count
+        for termination, count in sorted(counts.items())
+        if termination not in NON_FAILURE_TERMINATIONS
+    }
+    games = sum(counts.values())
+    return {
+        "complete": games == expected_games,
+        "expectedGames": expected_games,
+        "games": games,
+        "counts": dict(sorted(counts.items())),
+        "hardFailures": hard_failures,
+    }
+
+
 def _combined_status(matches: list[dict[str, Any]]) -> str:
     statuses = {match["result"]["status"] for match in matches}
-    if "incomplete" in statuses:
-        return "incomplete"
     if "fail" in statuses:
         return "fail"
+    if "incomplete" in statuses:
+        return "incomplete"
     if "inconclusive" in statuses:
         return "inconclusive"
     return "pass"
@@ -182,6 +216,14 @@ def build_summary(results_directory: Path) -> dict[str, Any]:
             if not isinstance(stats_by_match, dict) or len(stats_by_match) != 1:
                 raise SummaryError(f"expected one stats entry in {result_path}")
             result = summarize_stats(next(iter(stats_by_match.values())), expected_games)
+        termination_audit = audit_pgn_terminations(
+            results_directory / f"{match_id}.pgn", expected_games
+        )
+        result["terminationAudit"] = termination_audit
+        if result["complete"] and not termination_audit["complete"]:
+            result["status"] = "incomplete"
+        elif termination_audit["hardFailures"]:
+            result["status"] = "fail"
         summarized_matches.append(
             {
                 "id": match_id,
@@ -204,14 +246,20 @@ def build_summary(results_directory: Path) -> dict[str, Any]:
         )
 
     return {
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "manifest": str((results_directory / "manifest.json").resolve()),
         "method": {
             "unit": "paired openings",
             "confidenceInterval": "Wilson-style interval over bounded paired-opening scores",
             "pass": "higher preset's 95% score interval is entirely above 50%",
-            "fail": "higher preset's 95% score interval is at or below 50%",
+            "fail": "higher preset's 95% score interval is at or below 50%, or a game has a hard termination",
+            "hardFailureTerminations": [
+                "abandoned",
+                "illegal move",
+                "time forfeit",
+                "unterminated",
+            ],
         },
         "status": _combined_status(summarized_matches),
         "lanes": lanes,
@@ -229,8 +277,8 @@ def render_markdown(summary: dict[str, Any]) -> str:
         "openings; `W-D-L` is shown from that preset's perspective. LOS is the",
         "fastchess-style pentanomial normal approximation and is not the pass/fail gate.",
         "",
-        "| Lane | Matchup | W-D-L | Score (95% CI) | LOS | Status |",
-        "| --- | --- | ---: | ---: | ---: | --- |",
+        "| Lane | Matchup | W-D-L | Score (95% CI) | LOS | Hard failures | Status |",
+        "| --- | --- | ---: | ---: | ---: | --- | --- |",
     ]
     for match in summary["matches"]:
         result = match["result"]
@@ -238,16 +286,23 @@ def render_markdown(summary: dict[str, Any]) -> str:
             record = f"{result['games']}/{result['expectedGames']} games"
             lines.append(
                 f"| {match['lane']} | {match['lowerPreset']} → {match['higherPreset']} "
-                f"| {record} | — | — | **incomplete** |"
+                f"| {record} | — | — | — | **incomplete** |"
             )
             continue
         interval = result["higherScoreCi95"]
+        hard_failures = result.get("terminationAudit", {}).get("hardFailures", {})
+        rendered_failures = (
+            ", ".join(f"{name}: {count}" for name, count in hard_failures.items())
+            if hard_failures
+            else "—"
+        )
         lines.append(
             f"| {match['lane']} | {match['lowerPreset']} → {match['higherPreset']} "
             f"| {result['higherWins']}-{result['draws']}-{result['higherLosses']} "
             f"| {100 * result['higherScore']:.1f}% "
             f"({100 * interval['lower']:.1f}%–{100 * interval['upper']:.1f}%) "
-            f"| {result['higherLosPercent']:.1f}% | **{result['status']}** |"
+            f"| {result['higherLosPercent']:.1f}% | {rendered_failures} "
+            f"| **{result['status']}** |"
         )
     lines.extend(
         [
@@ -274,6 +329,11 @@ def write_summary(results_directory: Path) -> dict[str, Any]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("results_directory", type=Path)
+    parser.add_argument(
+        "--require-pass",
+        action="store_true",
+        help="return a failing exit code unless every match passes",
+    )
     args = parser.parse_args(sys.argv[1:] if argv is None else argv)
     try:
         summary = write_summary(args.results_directory.resolve())
@@ -281,6 +341,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"error: {error}", file=sys.stderr)
         return 2
     print(f"Summary ({summary['status']}): {args.results_directory.resolve() / 'summary.md'}")
+    if args.require_pass and summary["status"] != "pass":
+        print(
+            f"error: evaluation gate requires pass, observed {summary['status']}",
+            file=sys.stderr,
+        )
+        return 1
     return 0
 
 

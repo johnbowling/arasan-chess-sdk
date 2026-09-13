@@ -1,6 +1,8 @@
+import io
 import json
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import summarize_strength_eval as subject
@@ -97,6 +99,47 @@ class StrengthSummaryTest(unittest.TestCase):
         self.assertIn("casual → club", markdown)
         self.assertIn("20-0-0", markdown)
         self.assertIn("**pass**", markdown)
+
+    def test_hard_termination_overrides_winning_score(self):
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            directory = Path(temporary_directory)
+            match_id = "algorithm__casual_vs_club"
+            manifest = {
+                "study": {"openingPairs": 1},
+                "lanes": [{"id": "algorithm", "label": "Algorithm"}],
+                "matches": [
+                    {
+                        "id": match_id,
+                        "lane": "algorithm",
+                        "lowerPreset": "casual",
+                        "higherPreset": "club",
+                    }
+                ],
+            }
+            result = {"stats": {"lower vs higher": stats(losses=2, penta_LL=1)}}
+            (directory / "manifest.json").write_text(
+                json.dumps(manifest), encoding="utf-8"
+            )
+            (directory / f"{match_id}.fastchess.json").write_text(
+                json.dumps(result), encoding="utf-8"
+            )
+            (directory / f"{match_id}.pgn").write_text(
+                '[Termination "normal"]\n\n[Termination "time forfeit"]\n',
+                encoding="utf-8",
+            )
+
+            summary = subject.build_summary(directory)
+            with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                exit_code = subject.main([str(directory), "--require-pass"])
+
+        match_result = summary["matches"][0]["result"]
+        self.assertEqual(summary["status"], "fail")
+        self.assertEqual(match_result["higherScore"], 1.0)
+        self.assertEqual(
+            match_result["terminationAudit"]["hardFailures"], {"time forfeit": 1}
+        )
+        self.assertIn("time forfeit: 1", subject.render_markdown(summary))
+        self.assertEqual(exit_code, 1)
 
 
 if __name__ == "__main__":
