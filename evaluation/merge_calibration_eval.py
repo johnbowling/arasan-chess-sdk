@@ -20,6 +20,7 @@ COMPATIBILITY_FIELDS = (
     "sdkRevision",
     "openingSuite",
     "calibration",
+    "arasanRatingModel",
     "engineOptions",
     "presets",
 )

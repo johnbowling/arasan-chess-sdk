@@ -211,6 +211,7 @@ def build_manifest(
             else {"id": "custom", "format": "epd"}
         ),
         "calibration": config["calibration"],
+        "arasanRatingModel": model,
         "engineOptions": {
             "arasan": config["engineOptions"],
             "reference": config["calibration"]["reference"]["engineOptions"],

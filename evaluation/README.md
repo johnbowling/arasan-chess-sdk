@@ -179,6 +179,50 @@ duplicated, or input-incompatible shards before producing the combined report.
 The reference and match shards expire after one day; the combined report,
 manifests, PGNs, and logs are retained for 90 days.
 
+### Bracket search after a mismatch
+
+Do not spend a larger sample merely reconfirming a clear calibration mismatch.
+The search configuration under `calibration.search` instead supplies two
+initial Arasan inputs for each fixed Stockfish target. The inputs were derived
+from the first hosted baseline and deliberately surround its estimated
+zero-score crossing.
+
+Run one candidate locally by keeping the preset target fixed and overriding
+only Arasan's input:
+
+```sh
+python3 evaluation/run_calibration_eval.py run \
+  --fastchess /absolute/path/to/fastchess \
+  --arasan /absolute/path/to/arasanx-64 \
+  --reference /absolute/path/to/stockfish-19 \
+  --output-directory /absolute/path/to/search-shard \
+  --preset casual \
+  --arasan-elo 1600 \
+  --opening-pairs 25
+```
+
+Search match IDs include the candidate input, such as
+`calibration__casual__a1600`, so multiple candidates for one product target can
+be merged safely. A complete sharded search is checked and summarized with:
+
+```sh
+python3 evaluation/merge_calibration_eval.py \
+  --require-complete-search \
+  /absolute/path/to/combined-search \
+  /absolute/path/to/search-shards/*
+python3 evaluation/summarize_calibration_search.py \
+  --require-ready \
+  /absolute/path/to/combined-search
+```
+
+The search summary recognizes a directly passing candidate or interpolates
+between adjacent Elo-delta point estimates that straddle zero. It rejects
+missing games and hard terminations, flags a decreasing candidate curve, and
+requires the resulting inputs and internal strength buckets to increase across
+the product ladder. `ready-for-confirmation` means only that the exploratory
+mapping is coherent. Product values must not change until those suggested
+inputs pass the regular 200-pair equivalence gate.
+
 ## Prerequisites
 
 Build or obtain:
