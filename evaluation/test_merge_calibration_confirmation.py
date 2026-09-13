@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 
 import merge_calibration_confirmation as subject
+import summarize_calibration_eval
 
 
 def manifest(match_id, preset, target_elo, arasan_elo, opening_start):
@@ -117,6 +118,7 @@ class MergeCalibrationConfirmationTest(unittest.TestCase):
                     encoding="utf-8"
                 )
             )["stats"]["Arasan-club vs stockfish-19-1600"]
+            summary = summarize_calibration_eval.build_summary(output)
 
             self.assertEqual(merged["schemaVersion"], 2)
             self.assertEqual(merged["calibration"]["openingPairs"], 4)
@@ -128,6 +130,8 @@ class MergeCalibrationConfirmationTest(unittest.TestCase):
             )
             self.assertEqual(stats["draws"], 8)
             self.assertEqual(stats["penta_DD"], 4)
+            self.assertEqual(summary["matches"][1]["result"]["games"], 8)
+            self.assertTrue(summary["matches"][1]["result"]["complete"])
             self.assertEqual(
                 (output / "calibration__club__a1800.pgn")
                 .read_text(encoding="utf-8")

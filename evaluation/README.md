@@ -227,6 +227,41 @@ the band. `ready-for-confirmation` means only that the mapping is coherent.
 Product values must not change until those suggested inputs pass the regular
 200-pair equivalence gate.
 
+### Confirming a proposed mapping
+
+The proposal under `calibration.confirmation.mapping` is evidence to test, not
+a product configuration. It records the search run and SDK revision from which
+the six candidate inputs were derived. The `Stockfish calibration confirmation`
+workflow runs each proposal against its fixed Stockfish target and requires the
+same strict ±100 Elo equivalence gate used by the baseline study.
+
+A 200-pair `120+1` match can exceed a hosted job's time limit. The confirmation
+therefore divides the pinned opening suite into four non-overlapping sequential
+blocks of 50 pairs and runs those blocks independently. Fastchess's one-based
+opening `start` is explicit in every command and manifest. The confirmation
+combiner refuses a missing, duplicate, overlapping, out-of-order, differently
+configured, or mapping-incompatible block before summing pentanomial counts and
+joining the PGNs. The final summary still evaluates one 200-pair sample per
+preset; sharding changes only where the games execute.
+
+To combine locally downloaded blocks and enforce the gate:
+
+```sh
+python3 evaluation/merge_calibration_confirmation.py \
+  /absolute/path/to/combined-confirmation \
+  /absolute/path/to/confirmation-blocks/*
+python3 evaluation/summarize_calibration_eval.py \
+  --require-pass \
+  /absolute/path/to/combined-confirmation
+```
+
+The merged manifest retains each block's opening range and host. Mixing hosted
+CPU models can reveal infrastructure sensitivity but does not establish parity
+on SixtyFour's supported Apple devices; that remains a separate product-lane
+check. Only after all six confirmation intervals pass should the app's preset
+inputs be updated. A failure or inconclusive result calls for another targeted
+search or a larger sample, not an automatic product change.
+
 ### If SixtyFour replaces Arasan
 
 The experimental method is deliberately more portable than its current file

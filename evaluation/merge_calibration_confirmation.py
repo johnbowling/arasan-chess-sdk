@@ -62,10 +62,14 @@ def _confirmation_plan(manifest: dict[str, Any]) -> tuple[list[dict[str, Any]], 
     presets = manifest.get("presets")
     if not isinstance(presets, list):
         raise MergeError("manifest.presets must be a list")
+    rated_presets = [
+        preset
+        for preset in presets
+        if isinstance(preset, dict) and isinstance(preset.get("requestedElo"), int)
+    ]
     target_by_preset = {
         preset.get("id"): preset.get("requestedElo")
-        for preset in presets
-        if isinstance(preset, dict)
+        for preset in rated_presets
     }
     mapping = confirmation.get("mapping")
     if not isinstance(mapping, list) or not mapping:
@@ -92,6 +96,15 @@ def _confirmation_plan(manifest: dict[str, Any]) -> tuple[list[dict[str, Any]], 
             "arasanElo": arasan_elo,
         }
         plan.append({**match, "id": expected_id_for_match(match)})
+    rated_ids = [preset["id"] for preset in rated_presets]
+    mapped_ids = [entry["preset"] for entry in plan]
+    if mapped_ids != rated_ids:
+        raise MergeError(
+            "confirmation mapping must cover every rated preset in ladder order"
+        )
+    arasan_elos = [entry["arasanElo"] for entry in plan]
+    if any(lower >= higher for lower, higher in zip(arasan_elos, arasan_elos[1:])):
+        raise MergeError("confirmation Arasan inputs must increase across the ladder")
     return plan, total_pairs, pairs_per_shard
 
 
@@ -209,6 +222,7 @@ def merge_confirmation(
         log_paths = []
         console_paths = []
         for shard, manifest, match in ordered:
+            start = manifest["openingSelection"]["start"]
             for suffix in MATCH_SUFFIXES:
                 path = shard / f"{match_id}.{suffix}"
                 if not path.is_file():
@@ -219,6 +233,13 @@ def merge_confirmation(
             fastchess, current_name, stats = _one_stats(
                 shard / f"{match_id}.fastchess.json"
             )
+            opening = fastchess.get("opening")
+            if (
+                fastchess.get("rounds") != pairs_per_shard
+                or not isinstance(opening, dict)
+                or opening.get("start") != start
+            ):
+                raise MergeError(f"fastchess opening block disagrees with {shard}")
             if aggregate_fastchess is None:
                 aggregate_fastchess = copy.deepcopy(fastchess)
                 stats_name = current_name
@@ -226,7 +247,6 @@ def merge_confirmation(
                 raise MergeError(f"incompatible stats name in {shard}")
             for field in STAT_FIELDS:
                 combined_stats[field] += stats[field]
-            start = manifest["openingSelection"]["start"]
             pgn_paths.append(shard / f"{match_id}.pgn")
             log_paths.append(shard / f"{match_id}.log")
             console_paths.append(console)
