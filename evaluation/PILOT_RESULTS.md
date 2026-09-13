@@ -136,3 +136,23 @@ The successful GitHub Actions run is
 Its combined report is retained by GitHub for 90 days. A downloaded copy is
 kept outside Git at
 `artifacts/strength-eval-ci-parallel-34732430557`.
+
+## 2026-09-13 calibration mechanism smoke
+
+The new Stockfish-anchored runner was exercised end to end with Casual against
+Stockfish 19 at a matching requested Elo of 1320. This deliberately used only
+five paired openings and a short `2+0.02` clock. It validates process startup,
+UCI options, paired colors, artifact capture, score orientation, Elo
+conversion, and termination auditing. It is **not calibration evidence**: the
+clock differs from the checked-in `120+1` calibration condition and the sample
+is far too small.
+
+Stockfish won all 10 games. The report correctly remained inconclusive: the
+paired Wilson score interval was 0.0%–43.4%, corresponding to an Arasan Elo
+offset interval from unbounded below to −45.8. That interval overlaps the
+acceptable ±100 band, so neither equivalence nor a mismatch was established.
+All 10 PGNs had normal terminations and no hard failures.
+
+The local-only artifacts are kept at
+`artifacts/calibration-smoke-sf19-short`. The earlier interrupted `120+1` smoke
+is retained separately for diagnostics and is not a completed result.

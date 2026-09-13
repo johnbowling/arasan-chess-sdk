@@ -90,10 +90,10 @@ failure in both lanes points more directly to the strength algorithm or preset
 spacing.
 
 Neither study proves that a label such as 1900 equals human 1900. They test
-relative ordering on one binary and opening distribution. Absolute calibration
-requires a pinned reference-engine pool and a joint rating fit. Human-facing
-Elo claims ultimately require opt-in games against appropriately rated people
-at comparable time controls.
+relative ordering on one binary and opening distribution. The separate
+Stockfish-anchored study below tests numeric labels against a reproducible
+engine scale. Human-facing Elo claims ultimately require opt-in games against
+appropriately rated people at comparable time controls.
 
 ## Why repeated games are necessary
 
@@ -117,6 +117,66 @@ strength. The harness tests parse `src/options.h` and `src/search.cpp` so a
 change to the rating range or depth-cap table fails CI until this contract is
 reviewed.
 
+## Stockfish-anchored calibration
+
+`run_calibration_eval.py` compares each of the six rated Arasan presets with
+Stockfish 19 configured to the same `UCI_Elo`. Maximum is intentionally omitted
+because an unrestricted engine has no numeric target. Stockfish 19 is pinned by
+its `sf_19` tag and full source revision in `sixtyfour-strength.json`; the
+workflow builds that source instead of downloading an unidentified executable.
+The manifest hashes the resulting Stockfish, Arasan, fastchess, config, and
+opening binaries or files.
+
+This is a **Stockfish-anchored engine calibration**, not human Elo. Stockfish's
+pinned source describes its 1320–3190 limited-strength range as approximately
+covering CCRL Blitz Elo. The checked-in `120+1` game clock matches Stockfish's
+published calibration condition. A shorter clock is useful for plumbing tests,
+but it changes the experiment and cannot validate the published scale.
+
+Every selected opening is played with colors reversed. The summary converts
+Arasan's paired-opening score to an Elo offset using
+`400 * log10(score / (1 - score))`. A ±100 Elo equivalence band is checked this
+way:
+
+- **pass:** the entire 95% Elo-offset interval is inside −100 to +100;
+- **fail:** the entire interval is below −100 or above +100, or a game has a
+  hard termination;
+- **inconclusive:** the interval overlaps both acceptable and unacceptable
+  values, so more paired openings are needed.
+
+Requiring the whole interval to fit inside the band prevents a noisy point
+estimate near zero from being called calibrated. Conversely, a result is not
+called mismatched unless the data place the full interval outside one side of
+the band. The checked-in study uses 200 opening pairs per preset. The manual
+workflow defaults to 50 as a less expensive first pass; rerun inconclusive
+presets with 200 or more.
+
+Plan a local calibration without requiring the binaries to exist:
+
+```sh
+python3 evaluation/run_calibration_eval.py plan \
+  --fastchess /absolute/path/to/fastchess \
+  --arasan /absolute/path/to/arasanx-64 \
+  --reference /absolute/path/to/stockfish-19 \
+  --output-directory /absolute/path/to/calibration-results
+```
+
+Replace `plan` with `run` to execute it. Use `--preset club` to run one target.
+Development-only overrides include `--opening-pairs`, `--concurrency`,
+`--opening-seed`, `--time-control`, and `--tolerance-elo`; all are captured in
+the manifest. Regenerate or gate a report with:
+
+```sh
+python3 evaluation/summarize_calibration_eval.py \
+  --require-pass /absolute/path/to/calibration-results
+```
+
+The `Stockfish-anchored calibration` workflow builds all three executables once
+and runs the six presets on separate hosts. Its final job refuses missing,
+duplicated, or input-incompatible shards before producing the combined report.
+The reference and match shards expire after one day; the combined report,
+manifests, PGNs, and logs are retained for 90 days.
+
 ## Prerequisites
 
 Build or obtain:
@@ -124,6 +184,10 @@ Build or obtain:
 1. a native UCI executable built from the same Arasan source revision and
    release flags as the SixtyFour SDK artifact under test;
 2. a pinned fastchess binary.
+
+Local calibration also needs Stockfish built from the revision pinned under
+`calibration.reference`. The manual workflow performs and verifies that build
+automatically.
 
 The default opening suite is checked in under `evaluation/openings/`, together
 with its CC0 license, pinned upstream revision, and checksums. It is match input,
@@ -159,10 +223,10 @@ manifest. Use `--lane algorithm` or `--lane product` to run only one lane.
    release-native binary. Treat uncertainty as a first-class result.
 3. **Product monotonicity:** run the 650 ms paired study on each release backend
    to measure the actual no-clock experience.
-4. **Absolute calibration:** add a versioned reference pool, use the same paired
-   opening discipline, and fit all ratings jointly with a tool such as Ordo.
-   Anchor the scale explicitly; pool-relative engine Elo is not automatically
-   human Elo.
+4. **Stockfish-anchored calibration:** run each numeric preset against the
+   matching pinned Stockfish 19 `UCI_Elo` and require its confidence interval to
+   fit inside the declared equivalence band. Add a multi-engine reference pool
+   and a joint Ordo fit if one reference implementation proves too brittle.
 5. **Platform parity:** repeat on release Apple, Android, and WebAssembly builds.
    Compare failure rates, latency, NPS, and strength ordering. Time-based search
    is not expected to select identical moves across hardware.
@@ -211,5 +275,16 @@ python3 evaluation/merge_strength_eval.py \
   /absolute/path/to/combined \
   /absolute/path/to/shards/*
 python3 evaluation/summarize_strength_eval.py \
+  --require-pass /absolute/path/to/combined
+```
+
+Use the calibration-specific merger for downloaded reference-match shards:
+
+```sh
+python3 evaluation/merge_calibration_eval.py \
+  --require-complete-calibration \
+  /absolute/path/to/combined \
+  /absolute/path/to/shards/*
+python3 evaluation/summarize_calibration_eval.py \
   --require-pass /absolute/path/to/combined
 ```
