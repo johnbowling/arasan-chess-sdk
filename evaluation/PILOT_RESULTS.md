@@ -308,3 +308,85 @@ The GitHub Actions run is
 Its combined report is retained by GitHub for 90 days. A downloaded and
 post-fix-regenerated copy is kept outside Git at
 `artifacts/calibration-search-ci-34771071016`.
+
+## 2026-09-13 same-host bracket follow-up
+
+The expanded bracket search reran two candidates for every target. Unlike the
+first pilot, each target's candidates executed sequentially in one job on one
+host, removing CPU differences from its interpolation.
+
+Reproducibility inputs:
+
+- SDK revision: `c1b35b04a3d20259011a08b624d6db54947bb8be`
+- config SHA-256:
+  `f54f9a581ad996a24a73deab4ef44737e569ca128a8320f400449409b3547996`
+- Arasan SHA-256:
+  `bf9309d96718db9910308b11d824ba3dda8974d3e17f3ac05a0948d5ed8843c8`
+- Stockfish 19 revision: `edb0d9db6731067ec50ce619ff372b463bc4dd5d`
+- Stockfish SHA-256:
+  `ee4d3dd006770a083f635a75af8e74402cc4a7489be3f3353f4728ba2b2a1e5f`
+- fastchess SHA-256:
+  `6c872a7d9143c6d49ef06fe149af032ca07440606f1d7256c2544c788e39c561`
+- opening corpus SHA-256:
+  `13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317`
+- opening seed: `640026`
+- 25 paired openings per candidate at `120+1`
+- one thread and 32 MB hash per engine, four concurrent games
+
+| Preset target | Arasan input | Arasan W-D-L | Elo delta (95% CI) | Search use |
+| --- | ---: | ---: | ---: | --- |
+| Casual 1320 | 1600 | 13-0-37 | -181.7 (-332.2 to -31.2) | Lower candidate |
+| Casual 1320 | 1750 | 21-2-27 | -41.9 (-175.7 to +92.0) | In-band candidate |
+| Club 1600 | 1950 | 19-0-31 | -85.0 (-221.8 to +51.7) | Lower candidate |
+| Club 1600 | 2100 | 22-0-28 | -41.9 (-175.7 to +92.0) | In-band candidate |
+| Strong Club 1900 | 2125 | 20-2-28 | -56.1 (-190.7 to +78.5) | In-band candidate |
+| Strong Club 1900 | 2250 | 48-1-1 | +603.9 (+262.4 to +945.3) | Upper candidate |
+| Expert 2200 | 2150 | 10-0-40 | -240.8 (-404.9 to -76.8) | Lower bracket |
+| Expert 2200 | 2300 | 47-1-2 | +511.5 (+230.7 to +792.3) | Upper bracket |
+| Master 2500 | 2150 | 9-2-39 | -240.8 (-404.9 to -76.8) | Lower bracket |
+| Master 2500 | 2275 | 39-4-7 | +263.4 (+93.1 to +433.8) | Upper bracket |
+| Elite 2800 | 2575 | 20-13-17 | +20.9 (-112.3 to +154.0) | In-band candidate |
+| Elite 2800 | 2800 | 37-5-8 | +230.2 (+68.8 to +391.5) | Upper candidate |
+
+All six match jobs succeeded. All 600 games were present as 300 complete
+color-swapped pairs at `120+1`; every PGN termination was normal, with no hard
+failures. The two candidates for each target record the same CPU model and
+logical CPU count. The merger verified identical config, Arasan, Stockfish,
+fastchess, and opening hashes across all 12 shards. The workflow took 2 hours
+38 minutes 56 seconds.
+
+The report job failed before analysis because Elite's candidate input `2800`
+equals its product target. The runner correctly used the canonical match ID
+`calibration__elite`, while the search completeness check incorrectly expected
+`calibration__elite__a2800`. Commit `f8cc2108` fixes that ID rule and adds a
+regression test. The retained diagnostic shards merge successfully with the
+fix; no games needed to be repeated.
+
+Commit `eb5898d8` also aligns exploratory search with the declared +/-100 Elo
+equivalence goal. A tested candidate whose point estimate is already inside
+the band is now selected for confirmation even when its 25-pair confidence
+interval is too wide to pass. Requiring an exact zero crossing would spend more
+games optimizing beyond the product's stated tolerance. The candidate is still
+not called calibrated until its confirmation interval passes.
+
+The recovered search is **ready for confirmation** with this strictly
+increasing proposal:
+
+| Preset target | Proposed Arasan input | Internal bucket | Basis |
+| --- | ---: | ---: | --- |
+| Casual 1320 | 1750 | 30 | Observed point estimate inside band |
+| Club 1600 | 2100 | 44 | Observed point estimate inside band |
+| Strong Club 1900 | 2125 | 45 | Observed point estimate inside band |
+| Expert 2200 | 2198 | 48 | Interpolated zero crossing |
+| Master 2500 | 2210 | 49 | Interpolated zero crossing |
+| Elite 2800 | 2575 | 64 | Observed point estimate inside band |
+
+The close Club-through-Master inputs reflect Arasan's nonlinear weakening
+behavior and make confirmation especially important. These are evaluation-only
+hypotheses; no SixtyFour product value changed.
+
+The GitHub Actions run is
+[`34776431949`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34776431949).
+Its failed-run diagnostic shards are retained by GitHub for 90 days. The
+recovered combined report is kept outside Git at
+`artifacts/calibration-search-ci-34776431949/combined`.
