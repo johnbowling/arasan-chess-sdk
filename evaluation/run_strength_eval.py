@@ -351,6 +351,46 @@ def git_revision(repository: Path) -> str | None:
     return result.stdout.strip() if result.returncode == 0 else None
 
 
+def cpu_model() -> str:
+    """Return a useful CPU description without requiring platform-specific tools."""
+    cpuinfo = Path("/proc/cpuinfo")
+    if cpuinfo.is_file():
+        try:
+            for line in cpuinfo.read_text(encoding="utf-8").splitlines():
+                if line.lower().startswith("model name") and ":" in line:
+                    return line.split(":", 1)[1].strip()
+        except OSError:
+            pass
+    if platform.system() == "Darwin":
+        result = subprocess.run(
+            ["sysctl", "-n", "machdep.cpu.brand_string"],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            return result.stdout.strip()
+    return platform.processor() or platform.machine() or "unknown"
+
+
+def host_record() -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "platform": platform.platform(),
+        "machine": platform.machine(),
+        "processor": platform.processor(),
+        "cpuModel": cpu_model(),
+        "cpuCount": os.cpu_count(),
+    }
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        record["ci"] = {
+            "provider": "GitHub Actions",
+            "runnerOs": os.environ.get("RUNNER_OS"),
+            "runnerArch": os.environ.get("RUNNER_ARCH"),
+            "runnerEnvironment": os.environ.get("RUNNER_ENVIRONMENT"),
+        }
+    return record
+
+
 def build_manifest(
     args: argparse.Namespace,
     config: dict[str, Any],
@@ -373,12 +413,7 @@ def build_manifest(
         "schemaVersion": 1,
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "sdkRevision": git_revision(SCRIPT_DIR.parent),
-        "host": {
-            "platform": platform.platform(),
-            "machine": platform.machine(),
-            "processor": platform.processor(),
-            "cpuCount": os.cpu_count(),
-        },
+        "host": host_record(),
         "inputs": {
             "config": file_record(args.config, include_hashes),
             "fastchess": file_record(args.fastchess, include_hashes),

@@ -10,8 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
-import platform
 import re
 import subprocess
 import sys
@@ -25,6 +23,7 @@ from run_strength_eval import (
     bucket_rating,
     file_record,
     git_revision,
+    host_record,
     load_config,
     require_file,
     sha256,
@@ -188,12 +187,7 @@ def build_manifest(
         "evaluationType": "stockfish-anchored-calibration",
         "generatedAtUtc": datetime.now(timezone.utc).isoformat(),
         "sdkRevision": git_revision(Path(__file__).resolve().parent.parent),
-        "host": {
-            "platform": platform.platform(),
-            "machine": platform.machine(),
-            "processor": platform.processor(),
-            "cpuCount": os.cpu_count(),
-        },
+        "host": host_record(),
         "inputs": {
             "config": file_record(args.config, include_hashes),
             "fastchess": file_record(args.fastchess, include_hashes),

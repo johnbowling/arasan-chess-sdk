@@ -125,7 +125,9 @@ because an unrestricted engine has no numeric target. Stockfish 19 is pinned by
 its `sf_19` tag and full source revision in `sixtyfour-strength.json`; the
 workflow builds that source instead of downloading an unidentified executable.
 The manifest hashes the resulting Stockfish, Arasan, fastchess, config, and
-opening binaries or files.
+opening binaries or files. It also records the CPU model and CI runner class;
+different architectures can favor the two engines differently even when the
+clock and executables are otherwise controlled.
 
 This is a **Stockfish-anchored engine calibration**, not human Elo. Stockfish's
 pinned source describes its 1320–3190 limited-strength range as approximately

@@ -184,6 +184,11 @@ class StrengthEvaluationTest(unittest.TestCase):
         self.assertEqual(len(positions), suite["positions"])
         self.assertTrue(all(len(position.split()) == 6 for position in positions))
 
+    def test_host_record_identifies_cpu_model(self):
+        host = subject.host_record()
+        self.assertIsInstance(host["cpuModel"], str)
+        self.assertTrue(host["cpuModel"])
+
     def test_plan_overrides_are_recorded(self):
         rendered = io.StringIO()
         with redirect_stdout(rendered):
