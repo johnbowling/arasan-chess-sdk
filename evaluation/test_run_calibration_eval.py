@@ -83,6 +83,7 @@ class CalibrationRunnerTest(unittest.TestCase):
         plan = json.loads(rendered.getvalue())
         self.assertEqual(plan["evaluationType"], "stockfish-anchored-calibration")
         self.assertEqual(len(plan["matches"]), 1)
+        self.assertEqual(len(plan["presets"]), 6)
         self.assertEqual(plan["matches"][0]["id"], "calibration__casual")
         calibration = plan["calibration"]
         self.assertEqual(calibration["openingPairs"], 12)

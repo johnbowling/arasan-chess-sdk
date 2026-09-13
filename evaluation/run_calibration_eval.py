@@ -167,13 +167,14 @@ def select_presets(
 def build_manifest(
     args: argparse.Namespace,
     config: dict[str, Any],
-    presets: list[dict[str, Any]],
     commands: list[dict[str, Any]],
     include_hashes: bool,
 ) -> dict[str, Any]:
     model = config["arasanRatingModel"]
     enriched_presets = []
-    for preset in presets:
+    for preset in config["presets"]:
+        if preset["requestedElo"] is None:
+            continue
         bucket = strength_bucket(preset["requestedElo"], model)
         enriched_presets.append(
             {
@@ -343,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
             )
 
         manifest = build_manifest(
-            args, config, presets, commands, include_hashes=args.mode == "run"
+            args, config, commands, include_hashes=args.mode == "run"
         )
         if args.mode == "plan":
             json.dump(manifest, sys.stdout, indent=2)
