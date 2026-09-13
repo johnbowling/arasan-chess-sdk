@@ -45,7 +45,7 @@ jobs:
 
       - name: Build Stockfish reference
         shell: bash
-        run: make -C .evaluation-tools/stockfish/src -j"$(nproc)" profile-build ARCH=x86-64-avx2
+        run: make -C .evaluation-tools/stockfish/src -j"$(nproc)" profile-build ARCH=x86-64
 
       - name: Check out pinned fastchess
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -57,7 +57,7 @@ jobs:
 
       - name: Build fastchess
         shell: bash
-        run: make -C .evaluation-tools/fastchess -j"$(nproc)"
+        run: make -C .evaluation-tools/fastchess -j"$(nproc)" build=release
 
       - name: Verify configured Stockfish pin
         shell: bash

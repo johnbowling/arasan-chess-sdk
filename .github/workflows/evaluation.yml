@@ -79,7 +79,7 @@ jobs:
 
       - name: Build fastchess
         shell: bash
-        run: make -C .evaluation-tools/fastchess -j"$(nproc)"
+        run: make -C .evaluation-tools/fastchess -j"$(nproc)" build=release
 
       - name: Stage identical runner tools
         shell: bash
