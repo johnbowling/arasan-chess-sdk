@@ -54,6 +54,32 @@
     "Use tablebases": false,
     "MultiPV": 1
   },
+  "calibration": {
+    "name": "SixtyFour Arasan Stockfish-anchored calibration",
+    "openingPairs": 200,
+    "openingSeed": 640026,
+    "concurrency": 1,
+    "maxMoves": 300,
+    "timeControl": "120+1",
+    "equivalenceToleranceElo": 100,
+    "reference": {
+      "id": "stockfish-19",
+      "name": "Stockfish 19",
+      "repository": "https://github.com/official-stockfish/Stockfish",
+      "tag": "sf_19",
+      "revision": "edb0d9db6731067ec50ce619ff372b463bc4dd5d",
+      "license": "GPL-3.0",
+      "minimumElo": 1320,
+      "maximumElo": 3190,
+      "ratingScale": "Approximate CCRL Blitz Elo as documented by the pinned Stockfish source",
+      "engineOptions": {
+        "Threads": 1,
+        "Hash": 32,
+        "Ponder": false,
+        "MultiPV": 1
+      }
+    }
+  },
   "presets": [
     {
       "id": "casual",

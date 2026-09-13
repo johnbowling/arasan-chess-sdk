@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 import platform
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -122,6 +123,51 @@ def validate_config(config: dict[str, Any]) -> None:
     if not isinstance(engine_options, dict) or not engine_options:
         raise ConfigError("engineOptions must be a non-empty object")
 
+    calibration = config.get("calibration")
+    if not isinstance(calibration, dict):
+        raise ConfigError("calibration must be an object")
+    for key in ("name", "timeControl"):
+        if not isinstance(calibration.get(key), str) or not calibration[key]:
+            raise ConfigError(f"calibration.{key} must be a non-empty string")
+    if not re.fullmatch(r"\d+(?:\.\d+)?\+\d+(?:\.\d+)?", calibration["timeControl"]):
+        raise ConfigError("calibration.timeControl must use BASE+INCREMENT seconds")
+    for key in (
+        "openingPairs",
+        "openingSeed",
+        "concurrency",
+        "maxMoves",
+        "equivalenceToleranceElo",
+    ):
+        if not isinstance(calibration.get(key), int) or calibration[key] <= 0:
+            raise ConfigError(f"calibration.{key} must be a positive integer")
+    reference = calibration.get("reference")
+    if not isinstance(reference, dict):
+        raise ConfigError("calibration.reference must be an object")
+    for key in (
+        "id",
+        "name",
+        "repository",
+        "tag",
+        "revision",
+        "license",
+        "ratingScale",
+    ):
+        if not isinstance(reference.get(key), str) or not reference[key]:
+            raise ConfigError(f"calibration.reference.{key} must be a non-empty string")
+    if not re.fullmatch(r"[0-9a-f]{40}", reference["revision"]):
+        raise ConfigError("calibration.reference.revision must be a full Git commit hash")
+    reference_minimum = reference.get("minimumElo")
+    reference_maximum = reference.get("maximumElo")
+    if (
+        not isinstance(reference_minimum, int)
+        or not isinstance(reference_maximum, int)
+        or reference_minimum >= reference_maximum
+    ):
+        raise ConfigError("calibration reference Elo range is invalid")
+    reference_options = reference.get("engineOptions")
+    if not isinstance(reference_options, dict) or not reference_options:
+        raise ConfigError("calibration.reference.engineOptions must be a non-empty object")
+
     presets = config.get("presets")
     if not isinstance(presets, list) or len(presets) < 2:
         raise ConfigError("presets must contain at least two entries")
@@ -153,6 +199,8 @@ def validate_config(config: dict[str, Any]) -> None:
             raise ConfigError(f"presets[{index}].requestedElo must be an integer or final null")
         if rating < minimum or rating > maximum:
             raise ConfigError(f"preset {preset_id} is outside Arasan's Elo range")
+        if rating < reference_minimum or rating > reference_maximum:
+            raise ConfigError(f"preset {preset_id} is outside the calibration reference Elo range")
         if last_rating is not None and rating <= last_rating:
             raise ConfigError("rated presets must be strictly increasing")
         if not isinstance(expected_depth_cap, int) or expected_depth_cap <= 0:

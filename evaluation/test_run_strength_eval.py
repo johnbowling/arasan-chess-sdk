@@ -162,6 +162,19 @@ class StrengthEvaluationTest(unittest.TestCase):
         with subject.DEFAULT_CONFIG.open(encoding="utf-8") as handle:
             self.assertEqual(json.load(handle)["schemaVersion"], 1)
 
+    def test_calibration_reference_covers_every_rated_preset(self):
+        calibration = self.config["calibration"]
+        reference = calibration["reference"]
+        self.assertEqual(reference["tag"], "sf_19")
+        self.assertRegex(reference["revision"], r"^[0-9a-f]{40}$")
+        self.assertEqual(calibration["timeControl"], "120+1")
+        self.assertEqual(calibration["equivalenceToleranceElo"], 100)
+        for preset in self.config["presets"]:
+            rating = preset["requestedElo"]
+            if rating is not None:
+                self.assertLessEqual(reference["minimumElo"], rating)
+                self.assertGreaterEqual(reference["maximumElo"], rating)
+
     def test_bundled_opening_suite_matches_pinned_config(self):
         suite = self.config["openingSuite"]
         suite_path = subject.SCRIPT_DIR / suite["file"]
