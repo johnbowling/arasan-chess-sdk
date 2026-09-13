@@ -93,3 +93,46 @@ This establishes monotonic ordering for this engine binary, opening corpus,
 host, and the two tested search controls. A release gate should still use the
 checked-in 200-pair default across the full ladder, and platform-parity runs are
 still required for time-based behavior on other release backends.
+
+## 2026-09-13 release-gate baseline
+
+The published release gate ran the complete Algorithm ladder at its checked-in
+200-pair setting on SDK revision `944902681c71f7820dae0d8f669cce942e6c50e0`.
+It built Arasan and fastchess once, then used that identical uploaded binary
+bundle across six parallel Ubuntu x86-64 jobs with four logical CPUs each.
+
+Reproducibility inputs:
+
+- config SHA-256:
+  `de9a7dcc21d1533adcc74392530e40081b59fd111dcd3d1352e8ea20acea3a4a`
+- engine SHA-256:
+  `d080dee79cefd90fb2c97c1d6333e76d506c40a326a24b715fe3e951388e767a`
+- fastchess SHA-256:
+  `3e5eb69cf14c255a69072272cb37cc9ac3280bf70d3daf339287b29926e6ae24`
+- opening corpus SHA-256:
+  `13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317`
+- opening seed: `640026`
+
+| Matchup | Higher W-D-L | Score (95% CI) | Result |
+| --- | ---: | ---: | --- |
+| Casual -> Club | 359-24-17 | 92.8% (88.3%-95.6%) | Pass |
+| Club -> Strong Club | 331-22-47 | 85.5% (80.0%-89.7%) | Pass |
+| Strong Club -> Expert | 351-7-42 | 88.6% (83.5%-92.3%) | Pass |
+| Expert -> Master | 329-33-38 | 86.4% (80.9%-90.4%) | Pass |
+| Master -> Elite | 259-83-58 | 75.1% (68.7%-80.6%) | Pass |
+| Elite -> Maximum | 332-68-0 | 91.5% (86.8%-94.6%) | Pass |
+
+All six comparisons passed. All 2,400 games were present and had a normal PGN
+termination; no hard failures were recorded. The merger verified one SDK
+revision and one config, engine, fastchess, and opening hash across all shards
+before the gate evaluated the combined report.
+
+The parallel workflow completed in 58 minutes 23 seconds. The preceding
+sequential baseline took 1 hour 53 minutes 2 seconds, so sharding removed 54
+minutes 39 seconds, or 48% of wall-clock time, without reducing the sample.
+
+The successful GitHub Actions run is
+[`34732430557`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34732430557).
+Its combined report is retained by GitHub for 90 days. A downloaded copy is
+kept outside Git at
+`artifacts/strength-eval-ci-parallel-34732430557`.
