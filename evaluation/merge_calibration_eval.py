@@ -72,6 +72,14 @@ def expected_search_match_ids(manifest: dict[str, Any]) -> list[str]:
     candidates = search.get("candidates") if isinstance(search, dict) else None
     if not isinstance(candidates, list) or not candidates:
         raise MergeError("manifest.calibration.search.candidates must contain entries")
+    presets = manifest.get("presets")
+    if not isinstance(presets, list):
+        raise MergeError("manifest.presets must be a list")
+    target_by_preset = {
+        preset.get("id"): preset.get("requestedElo")
+        for preset in presets
+        if isinstance(preset, dict)
+    }
     expected = []
     for candidate in candidates:
         if not isinstance(candidate, dict):
@@ -80,7 +88,19 @@ def expected_search_match_ids(manifest: dict[str, Any]) -> list[str]:
         arasan_elos = candidate.get("arasanEloCandidates")
         if not isinstance(preset, str) or not isinstance(arasan_elos, list):
             raise MergeError("calibration search candidate is malformed")
-        expected.extend(f"calibration__{preset}__a{elo}" for elo in arasan_elos)
+        target_elo = target_by_preset.get(preset)
+        if not isinstance(target_elo, int):
+            raise MergeError(f"calibration search preset is not rated: {preset}")
+        expected.extend(
+            expected_id_for_match(
+                {
+                    "preset": preset,
+                    "requestedElo": target_elo,
+                    "arasanElo": elo,
+                }
+            )
+            for elo in arasan_elos
+        )
     return expected
 
 

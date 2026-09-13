@@ -25,7 +25,10 @@ def manifest(match_id, preset):
             "reference": {"id": "stockfish-19"},
         },
         "engineOptions": {"arasan": {"Threads": 1}, "reference": {"Threads": 1}},
-        "presets": [{"id": "casual"}, {"id": "club"}],
+        "presets": [
+            {"id": "casual", "requestedElo": 1320},
+            {"id": "club", "requestedElo": 1600},
+        ],
         "matches": [
             {
                 "id": match_id,
@@ -146,6 +149,20 @@ class MergeCalibrationEvaluationTest(unittest.TestCase):
 
             with self.assertRaisesRegex(subject.MergeError, "Arasan Elo disagree"):
                 subject.merge_shards(root / "merged", [shard])
+
+    def test_search_uses_canonical_id_when_candidate_equals_target(self):
+        value = manifest("calibration__club", "club")
+        value["matches"][0]["arasanElo"] = 1600
+        value["calibration"]["search"] = {
+            "candidates": [
+                {"preset": "club", "arasanEloCandidates": [1500, 1600]}
+            ]
+        }
+
+        self.assertEqual(
+            subject.expected_search_match_ids(value),
+            ["calibration__club__a1500", "calibration__club"],
+        )
 
 
 if __name__ == "__main__":
