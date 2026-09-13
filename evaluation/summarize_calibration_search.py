@@ -91,6 +91,20 @@ def _candidate_record(
     return record
 
 
+def _clearly_decreases(lower: dict[str, Any], higher: dict[str, Any]) -> bool:
+    """Return true only when confidence intervals establish a decreasing curve."""
+    lower_interval = lower["result"].get("eloDeltaCi95")
+    higher_interval = higher["result"].get("eloDeltaCi95")
+    if isinstance(lower_interval, dict) and isinstance(higher_interval, dict):
+        lower_bound = lower_interval.get("lower")
+        higher_bound = higher_interval.get("upper")
+        if isinstance(lower_bound, (int, float)) and isinstance(
+            higher_bound, (int, float)
+        ):
+            return higher_bound < lower_bound
+    return _signed_delta(higher["result"]) < _signed_delta(lower["result"])
+
+
 def analyze_target(
     preset: str,
     target_elo: int,
@@ -116,7 +130,10 @@ def analyze_target(
         return analysis
 
     deltas = [_signed_delta(match["result"]) for match in ordered]
-    if any(higher < lower for lower, higher in zip(deltas, deltas[1:])):
+    if any(
+        _clearly_decreases(lower, higher)
+        for lower, higher in zip(ordered, ordered[1:])
+    ):
         analysis["status"] = "non-monotonic"
         return analysis
 
@@ -336,8 +353,9 @@ def render_markdown(summary: dict[str, Any]) -> str:
     elif summary["status"] == "review":
         lines.extend(
             [
-                "The observed curve or suggested mapping is not monotonic. Review",
-                "the affected target before spending a full confirmation run.",
+                "The observed curve has a statistically separated decrease, or the",
+                "suggested mapping is not monotonic. Review the affected target before",
+                "spending a full confirmation run.",
             ]
         )
     elif summary["status"] == "incomplete":

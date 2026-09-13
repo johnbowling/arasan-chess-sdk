@@ -69,11 +69,21 @@ class CalibrationSearchSummaryTest(unittest.TestCase):
         analysis = subject.analyze_target(
             "club",
             1600,
-            [match(1600, -20), match(1750, -80)],
+            [match(1600, 200), match(1750, -200)],
             RATING_MODEL,
         )
 
         self.assertEqual(analysis["status"], "non-monotonic")
+
+    def test_treats_overlapping_point_reversal_as_sampling_noise(self):
+        analysis = subject.analyze_target(
+            "club",
+            1600,
+            [match(1600, 275), match(1750, 240)],
+            RATING_MODEL,
+        )
+
+        self.assertEqual(analysis["status"], "expand-lower")
 
     def test_hard_termination_invalidates_target(self):
         analysis = subject.analyze_target(

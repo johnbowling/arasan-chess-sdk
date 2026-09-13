@@ -37,11 +37,9 @@ jobs:
               {
                 include: [
                   .calibration.search.candidates[] as $candidate
-                  | $candidate.arasanEloCandidates[] as $elo
                   | {
                       preset: $candidate.preset,
-                      arasan_elo: $elo,
-                      artifact_id: ($candidate.preset + "-a" + ($elo | tostring))
+                      artifact_id: $candidate.preset
                     }
                 ]
               }
@@ -118,7 +116,7 @@ jobs:
           retention-days: 1
 
   match:
-    name: Search ${{ matrix.preset }} at Arasan ${{ matrix.arasan_elo }}
+    name: Search ${{ matrix.preset }} bracket
     needs: [plan, tools]
     strategy:
       fail-fast: false
@@ -148,31 +146,42 @@ jobs:
             "${GITHUB_WORKSPACE}/${network_path}" \
             "artifacts/calibration-tools/$(basename "${network_path}")"
 
-      - name: Run paired bracket candidate
+      - name: Run paired bracket candidates on one host
         shell: bash
         run: |
           set -euo pipefail
-          results_path="artifacts/calibration-search"
-          mkdir -p "${results_path}"
-          python3 evaluation/run_calibration_eval.py run \
-            --fastchess artifacts/calibration-tools/fastchess \
-            --arasan artifacts/calibration-tools/arasanx-64-modern \
-            --arasan-directory artifacts/calibration-tools \
-            --reference artifacts/calibration-tools/stockfish-19 \
-            --reference-directory artifacts/calibration-tools \
-            --output-directory "${results_path}" \
-            --opening-pairs "${{ inputs.opening_pairs }}" \
-            --concurrency "$(nproc)" \
-            --preset "${{ matrix.preset }}" \
-            --arasan-elo "${{ matrix.arasan_elo }}" \
-            > "${results_path}/console.log" 2>&1
+          mapfile -t arasan_elos < <(
+            jq --raw-output \
+              --arg preset "${{ matrix.preset }}" \
+              '.calibration.search.candidates[]
+               | select(.preset == $preset)
+               | .arasanEloCandidates[]' \
+              evaluation/sixtyfour-strength.json
+          )
+          test "${#arasan_elos[@]}" -ge 2
+          for arasan_elo in "${arasan_elos[@]}"; do
+            results_path="artifacts/calibration-search-shards/${{ matrix.preset }}-a${arasan_elo}"
+            mkdir -p "${results_path}"
+            python3 evaluation/run_calibration_eval.py run \
+              --fastchess artifacts/calibration-tools/fastchess \
+              --arasan artifacts/calibration-tools/arasanx-64-modern \
+              --arasan-directory artifacts/calibration-tools \
+              --reference artifacts/calibration-tools/stockfish-19 \
+              --reference-directory artifacts/calibration-tools \
+              --output-directory "${results_path}" \
+              --opening-pairs "${{ inputs.opening_pairs }}" \
+              --concurrency "$(nproc)" \
+              --preset "${{ matrix.preset }}" \
+              --arasan-elo "${arasan_elo}" \
+              > "${results_path}/console.log" 2>&1
+          done
 
       - name: Upload search shard
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: arasan-calibration-search-shard-${{ matrix.artifact_id }}-${{ github.sha }}
-          path: artifacts/calibration-search
+          path: artifacts/calibration-search-shards
           if-no-files-found: error
           retention-days: 1
 
@@ -198,7 +207,7 @@ jobs:
           set -euo pipefail
           mapfile -t shard_paths < <(
             find artifacts/calibration-search-shards \
-              -mindepth 1 -maxdepth 1 -type d -print | sort
+              -type f -name manifest.json -printf '%h\n' | sort
           )
           python3 evaluation/merge_calibration_eval.py \
             --require-complete-search \
