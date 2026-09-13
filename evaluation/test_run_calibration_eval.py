@@ -48,7 +48,29 @@ class CalibrationRunnerTest(unittest.TestCase):
         self.assertIn("option.Position learning=false", command)
         self.assertIn("option.Ponder=false", command)
         self.assertIn("-repeat", command)
+        self.assertIn("order=random", command)
+        self.assertIn("start=1", command)
         self.assertNotIn("-strict", command)
+
+    def test_sequential_opening_block_is_explicit(self):
+        preset = self.config["presets"][0]
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            command = subject.build_fastchess_command(
+                Path("/tools/fastchess"),
+                Path("/sdk/arasanx"),
+                Path("/sdk"),
+                Path("/reference/stockfish"),
+                Path("/reference"),
+                Path("/data/openings.epd"),
+                Path(temporary_directory),
+                self.config,
+                preset,
+                opening_order="sequential",
+                opening_start=51,
+            )
+
+        self.assertIn("order=sequential", command)
+        self.assertIn("start=51", command)
 
     def test_search_candidate_holds_reference_target_fixed(self):
         preset = self.config["presets"][1]
@@ -117,6 +139,70 @@ class CalibrationRunnerTest(unittest.TestCase):
         self.assertEqual(calibration["reference"]["tag"], "sf_19")
         self.assertRegex(calibration["reference"]["revision"], r"^[0-9a-f]{40}$")
         self.assertNotIn("sha256", plan["inputs"]["reference"])
+        self.assertEqual(
+            plan["openingSelection"],
+            {"order": "random", "start": 1, "pairs": 12},
+        )
+
+    def test_plan_records_sequential_opening_block(self):
+        rendered = io.StringIO()
+        with redirect_stdout(rendered):
+            exit_code = subject.main(
+                [
+                    "plan",
+                    "--fastchess",
+                    "/missing/fastchess",
+                    "--arasan",
+                    "/missing/arasan",
+                    "--reference",
+                    "/missing/stockfish",
+                    "--output-directory",
+                    "/missing/results",
+                    "--preset",
+                    "casual",
+                    "--opening-pairs",
+                    "50",
+                    "--opening-order",
+                    "sequential",
+                    "--opening-start",
+                    "101",
+                ]
+            )
+
+        self.assertEqual(exit_code, 0)
+        plan = json.loads(rendered.getvalue())
+        self.assertEqual(
+            plan["openingSelection"],
+            {"order": "sequential", "start": 101, "pairs": 50},
+        )
+        self.assertIn("order=sequential", plan["matches"][0]["argv"])
+        self.assertIn("start=101", plan["matches"][0]["argv"])
+
+    def test_rejects_sequential_block_past_end_of_suite(self):
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            exit_code = subject.main(
+                [
+                    "plan",
+                    "--fastchess",
+                    "/missing/fastchess",
+                    "--arasan",
+                    "/missing/arasan",
+                    "--reference",
+                    "/missing/stockfish",
+                    "--output-directory",
+                    "/missing/results",
+                    "--preset",
+                    "casual",
+                    "--opening-pairs",
+                    "50",
+                    "--opening-order",
+                    "sequential",
+                    "--opening-start",
+                    "601",
+                ]
+            )
+
+        self.assertEqual(exit_code, 2)
 
     def test_plan_records_distinct_arasan_search_input(self):
         rendered = io.StringIO()

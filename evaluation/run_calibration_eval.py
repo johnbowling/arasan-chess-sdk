@@ -83,6 +83,8 @@ def build_fastchess_command(
     config: dict[str, Any],
     preset: dict[str, Any],
     arasan_elo: int | None = None,
+    opening_order: str = "random",
+    opening_start: int = 1,
 ) -> list[str]:
     calibration = config["calibration"]
     reference = calibration["reference"]
@@ -118,7 +120,8 @@ def build_fastchess_command(
             "-openings",
             f"file={openings_path}",
             "format=epd",
-            "order=random",
+            f"order={opening_order}",
+            f"start={opening_start}",
             "-srand",
             str(calibration["openingSeed"]),
             "-rounds",
@@ -210,6 +213,11 @@ def build_manifest(
             if args.uses_configured_openings
             else {"id": "custom", "format": "epd"}
         ),
+        "openingSelection": {
+            "order": args.opening_order,
+            "start": args.opening_start,
+            "pairs": config["calibration"]["openingPairs"],
+        },
         "calibration": config["calibration"],
         "arasanRatingModel": model,
         "engineOptions": {
@@ -239,6 +247,18 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--opening-pairs", type=int, help="override the pair count")
     parser.add_argument("--concurrency", type=int, help="override the concurrency")
     parser.add_argument("--opening-seed", type=int, help="override the opening seed")
+    parser.add_argument(
+        "--opening-order",
+        choices=("random", "sequential"),
+        default="random",
+        help="opening traversal order (default: random)",
+    )
+    parser.add_argument(
+        "--opening-start",
+        type=int,
+        default=1,
+        help="one-based opening index at which traversal starts (default: 1)",
+    )
     parser.add_argument(
         "--time-control",
         help="override BASE+INCREMENT seconds (for example 120+1)",
@@ -305,6 +325,14 @@ def main(argv: list[str] | None = None) -> int:
             if not re.fullmatch(r"\d+(?:\.\d+)?\+\d+(?:\.\d+)?", args.time_control):
                 raise ConfigError("--time-control must use BASE+INCREMENT seconds")
             calibration["timeControl"] = args.time_control
+        if args.opening_start <= 0:
+            raise ConfigError("--opening-start must be positive")
+        if args.uses_configured_openings and args.opening_order == "sequential":
+            last_opening = args.opening_start + calibration["openingPairs"] - 1
+            if last_opening > config["openingSuite"]["positions"]:
+                raise ConfigError(
+                    "sequential opening selection exceeds the configured suite"
+                )
         presets = select_presets(config["presets"], args.preset)
         if args.arasan_elo is not None:
             if len(presets) != 1:
@@ -351,6 +379,8 @@ def main(argv: list[str] | None = None) -> int:
                 config,
                 preset,
                 args.arasan_elo,
+                args.opening_order,
+                args.opening_start,
             )
             target_elo = preset["requestedElo"]
             arasan_elo = target_elo if args.arasan_elo is None else args.arasan_elo

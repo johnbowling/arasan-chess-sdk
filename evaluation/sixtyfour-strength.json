@@ -92,6 +92,40 @@
         }
       ]
     },
+    "confirmation": {
+      "name": "SixtyFour Arasan Stockfish calibration confirmation",
+      "openingPairs": 200,
+      "pairsPerShard": 50,
+      "openingOrder": "sequential",
+      "sourceRunId": 34776431949,
+      "sourceSdkRevision": "c1b35b04a3d20259011a08b624d6db54947bb8be",
+      "mapping": [
+        {
+          "preset": "casual",
+          "arasanElo": 1750
+        },
+        {
+          "preset": "club",
+          "arasanElo": 2100
+        },
+        {
+          "preset": "strong-club",
+          "arasanElo": 2125
+        },
+        {
+          "preset": "expert",
+          "arasanElo": 2198
+        },
+        {
+          "preset": "master",
+          "arasanElo": 2210
+        },
+        {
+          "preset": "elite",
+          "arasanElo": 2575
+        }
+      ]
+    },
     "reference": {
       "id": "stockfish-19",
       "name": "Stockfish 19",
