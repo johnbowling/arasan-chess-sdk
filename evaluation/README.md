@@ -225,6 +225,31 @@ are treated as sampling uncertainty rather than proof of a reversal.
 Product values must not change until those suggested inputs pass the regular
 200-pair equivalence gate.
 
+### If SixtyFour replaces Arasan
+
+The experimental method is deliberately more portable than its current file
+and option names. A replacement UCI engine can reuse fastchess orchestration,
+the pinned opening suite, color-swapped pairs, fixed resource controls,
+termination audits, confidence intervals, sharded execution, input hashing,
+and Stockfish reference. Those pieces answer the same questions regardless of
+which engine is embedded.
+
+Engine-specific facts do not transfer. In particular, the candidate's command
+line, supported UCI options, weakening mechanism and range, internal depth or
+skill behavior, and numeric mapping to the product presets must be described
+and tested for the replacement. An engine exposing `UCI_LimitStrength` and
+`UCI_Elo` can use the same bracket-search shape. One exposing only `Skill
+Level`, a depth limit, or a proprietary knob needs a profile that renders that
+control while leaving the match method unchanged. An engine with no weakening
+control cannot provide the current ladder without a product-side limiter.
+
+No Arasan result or suggested input should be carried into another engine.
+After a swap, rerun option conformance, adjacent-level monotonicity, anchored
+calibration, and platform parity with manifests naming and hashing the new
+binary. The current scripts stay explicit about Arasan because this repository
+packages Arasan; extracting a generic candidate-engine profile is appropriate
+when a concrete replacement and its controls are known.
+
 ## Prerequisites
 
 Build or obtain:

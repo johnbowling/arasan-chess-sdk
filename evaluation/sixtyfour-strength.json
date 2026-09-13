@@ -72,11 +72,11 @@
         },
         {
           "preset": "club",
-          "arasanEloCandidates": [1800, 1950]
+          "arasanEloCandidates": [1950, 2100]
         },
         {
           "preset": "strong-club",
-          "arasanEloCandidates": [1975, 2125]
+          "arasanEloCandidates": [2125, 2250]
         },
         {
           "preset": "expert",
@@ -84,11 +84,11 @@
         },
         {
           "preset": "master",
-          "arasanEloCandidates": [2275, 2425]
+          "arasanEloCandidates": [2150, 2275]
         },
         {
           "preset": "elite",
-          "arasanEloCandidates": [2425, 2575]
+          "arasanEloCandidates": [2575, 2800]
         }
       ]
     },
