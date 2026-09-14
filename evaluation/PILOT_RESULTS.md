@@ -457,3 +457,72 @@ The GitHub Actions run is
 [`34785759770`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34785759770).
 Its combined report is retained by GitHub for 90 days. A downloaded copy is
 kept outside Git at `artifacts/calibration-confirmation-ci-34785759770`.
+
+## 2026-09-14 targeted confirmation extension
+
+The targeted extension added two new 50-pair blocks for Strong Club 2125 and
+Master 2210, using opening indices 201 and 251. It reused the exact Arasan,
+Stockfish, and fastchess binaries from the 200-pair confirmation and verified
+their hashes before starting. The extension combiner also verified the base
+run, mappings, options, opening suite, and six disjoint opening ranges before
+pooling each level's 300 paired observations.
+
+Reproducibility inputs:
+
+- extension SDK revision: `cf60cfacd6cad67b2920150350cd73587349299a`
+- base run: `34785759770`
+- extension config SHA-256:
+  `96599e55f44f2639627f3362a08a782a9bb355ff075af17dacde57f7273a2e6b`
+- Arasan SHA-256:
+  `e750919a82bd70288f556b621e05b018137f7edfc9a509cf11596d3a0fa7ba63`
+- Stockfish SHA-256:
+  `ee4d3dd006770a083f635a75af8e74402cc4a7489be3f3353f4728ba2b2a1e5f`
+- fastchess SHA-256:
+  `6c872a7d9143c6d49ef06fe149af032ca07440606f1d7256c2544c788e39c561`
+- opening corpus SHA-256:
+  `13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317`
+- Arasan network SHA-256:
+  `b42f9e13a37debb4af425d2ca74b5edff1d8034a616806bccdb67b79530201ac`
+- 100 new paired openings per selected preset at `120+1`, producing 300
+  cumulative pairs per selected preset
+
+| Preset target | Arasan input | New-block W-D-L | Cumulative W-D-L | Cumulative Elo delta (95% CI) | Status |
+| --- | ---: | ---: | ---: | ---: | --- |
+| Strong Club 1900 | 2125 | 79-6-115 | 241-18-341 | -58.5 (-98.2 to -18.7) | Pass |
+| Master 2500 | 2210 | 78-9-113 | 237-24-339 | -59.6 (-99.5 to -19.8) | Pass |
+
+All four supplemental match jobs succeeded. All 400 new games were present as
+200 complete color-swapped pairs, every PGN termination was normal, and both
+300-pair confidence intervals now fit completely inside the +/-100 Elo band.
+The observed intervals closely matched the planning projection. The workflow
+took 2 hours 23 minutes 17 seconds.
+
+Combined with the four levels that passed at 200 pairs, the complete proposed
+mapping has now passed the Stockfish-anchored equivalence criterion:
+
+| Preset target | Confirmed Arasan input | Internal bucket | Evidence |
+| --- | ---: | ---: | --- |
+| Casual 1320 | 1750 | 30 | 200-pair pass |
+| Club 1600 | 2100 | 44 | 200-pair pass |
+| Strong Club 1900 | 2125 | 45 | 300-pair pass |
+| Expert 2200 | 2198 | 48 | 200-pair pass |
+| Master 2500 | 2210 | 49 | 300-pair pass |
+| Elite 2800 | 2575 | 64 | 200-pair pass |
+
+This supports remapping SixtyFour's named levels rather than changing Arasan's
+weakening algorithm. It establishes equivalence to the pinned Stockfish scale
+under this Linux `120+1` experiment; it does not establish human Elo, the
+650-ms product experience, or Apple-device parity.
+
+Before changing the app, the confirmed Arasan inputs should be represented
+separately from their public target labels in the evaluation configuration and
+run through both the depth-controlled Algorithm ladder and the 650-ms Product
+ladder. Supported Apple devices should then run the Product ladder for parity.
+Only after those monotonicity checks pass should the app adopt the mapping. No
+SixtyFour product difficulty value has changed yet.
+
+The successful GitHub Actions run is
+[`34810963296`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34810963296).
+Its combined report and exact tool bundle are retained by GitHub for 90 days. A
+downloaded report is kept outside Git at
+`artifacts/calibration-extension-ci-34810963296`.
