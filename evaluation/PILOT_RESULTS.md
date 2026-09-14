@@ -390,3 +390,70 @@ The GitHub Actions run is
 Its failed-run diagnostic shards are retained by GitHub for 90 days. The
 recovered combined report is kept outside Git at
 `artifacts/calibration-search-ci-34776431949/combined`.
+
+## 2026-09-14 proposed-mapping confirmation
+
+The full confirmation tested the six strictly increasing inputs selected by
+the same-host bracket follow-up. Each preset used 200 distinct color-swapped
+opening pairs at `120+1`. To remain within hosted-job limits, the workflow split
+each preset across four sequential 50-pair blocks starting at opening indices
+1, 51, 101, and 151, then verified and combined the block statistics and PGNs.
+
+Reproducibility inputs:
+
+- SDK revision: `a3629bdf71681d18b9b2a91940087532da805047`
+- config SHA-256:
+  `698b23eeba3b7a52bbf41be67409bd3e7f9c2d333e61753f01f03eac0de1771b`
+- Arasan SHA-256:
+  `e750919a82bd70288f556b621e05b018137f7edfc9a509cf11596d3a0fa7ba63`
+- Stockfish 19 revision: `edb0d9db6731067ec50ce619ff372b463bc4dd5d`
+- Stockfish SHA-256:
+  `ee4d3dd006770a083f635a75af8e74402cc4a7489be3f3353f4728ba2b2a1e5f`
+- fastchess SHA-256:
+  `6c872a7d9143c6d49ef06fe149af032ca07440606f1d7256c2544c788e39c561`
+- opening corpus SHA-256:
+  `13f1637882d3631fc6919c2c8ab95989d1e6d620a335feccc727ea1d3d63e317`
+- 200 paired openings per preset at `120+1`
+- one thread and 32 MB hash per engine, four concurrent games per block
+
+| Preset target | Arasan input | Arasan W-D-L | Elo delta (95% CI) | Status |
+| --- | ---: | ---: | ---: | --- |
+| Casual 1320 | 1750 | 208-9-183 | +21.7 (-26.3 to +69.8) | Pass |
+| Club 1600 | 2100 | 199-7-194 | +4.3 (-43.7 to +52.3) | Pass |
+| Strong Club 1900 | 2125 | 162-12-226 | -56.1 (-104.7 to -7.5) | Inconclusive |
+| Expert 2200 | 2198 | 203-13-184 | +16.5 (-31.5 to +64.6) | Pass |
+| Master 2500 | 2210 | 159-15-226 | -58.7 (-107.4 to -10.1) | Inconclusive |
+| Elite 2800 | 2575 | 166-93-141 | +21.7 (-26.3 to +69.8) | Pass |
+
+All 24 match jobs succeeded. All 2,400 games were present as 1,200 complete
+paired observations, and every PGN termination was normal. The merger accepted
+exactly the four configured non-overlapping blocks for every preset. All hosts
+exposed four logical CPUs, but the hosted pool assigned four CPU models across
+the 24 blocks. Strong Club's four blocks all ran on AMD EPYC 7763 hosts;
+Master's blocks spanned AMD EPYC 7763, AMD EPYC 9V74, and Intel Xeon Platinum
+8573C hosts. Supported-device parity remains a separate product-lane question.
+The workflow took 4 hours 57 minutes 36 seconds.
+
+The combined calibration status is **inconclusive**, not fail. Four inputs pass
+the strict requirement that their entire 95% interval fit inside the +/-100
+Elo band. Strong Club and Master have point estimates inside the band, but their
+lower interval bounds extend only 4.7 and 7.4 Elo beyond it. The report job is
+red solely because `--require-pass` correctly rejects those two inconclusive
+results; it is not an operational workflow failure and is not evidence of an
+Arasan defect.
+
+The next efficient step is to add 100 new, disjoint paired openings for Strong
+Club 2125 and Master 2210 only, using indices 201 through 300, and combine them
+with the retained 200-pair samples. If the observed centers and variances stay
+similar, ordinary inverse-square-root interval scaling projects roughly
+40-Elo half-widths at 300 pairs: about -95.8 to -16.4 for Strong Club and -98.5
+to -19.0 for Master. Those are planning projections, not results. A stable
+300-pair interval that still crosses the boundary would justify refining the
+input; a statistically clear discontinuity or inability to keep distinct
+monotonic buckets would justify investigating Arasan's weakening algorithm.
+No SixtyFour product difficulty value has changed.
+
+The GitHub Actions run is
+[`34785759770`](https://github.com/johnbowling/arasan-chess-sdk/actions/runs/34785759770).
+Its combined report is retained by GitHub for 90 days. A downloaded copy is
+kept outside Git at `artifacts/calibration-confirmation-ci-34785759770`.
