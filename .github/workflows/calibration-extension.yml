@@ -1,0 +1,234 @@
+name: Targeted calibration extension
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: calibration-extension-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  plan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.config.outputs.matrix }}
+      base_run_id: ${{ steps.config.outputs.base_run_id }}
+      base_results_artifact: ${{ steps.config.outputs.base_results_artifact }}
+      base_tools_artifact: ${{ steps.config.outputs.base_tools_artifact }}
+
+    steps:
+      - name: Check out evaluation configuration
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Build extension plan
+        id: config
+        shell: bash
+        run: |
+          set -euo pipefail
+          extension="$(jq --compact-output '.calibration.confirmationExtension' evaluation/sixtyfour-strength.json)"
+          matrix="$(
+            jq --compact-output '
+              {
+                include: [
+                  .mapping[] as $mapping
+                  | .openingStarts[] as $opening_start
+                  | {
+                      preset: $mapping.preset,
+                      arasan_elo: $mapping.arasanElo,
+                      block: ((($opening_start - 1) / .pairsPerShard) + 1),
+                      opening_start: $opening_start,
+                      opening_pairs: .pairsPerShard
+                    }
+                ]
+              }
+            ' <<< "${extension}"
+          )"
+          test "$(jq '.include | length' <<< "${matrix}")" -gt 0
+          echo "matrix=${matrix}" >> "${GITHUB_OUTPUT}"
+          echo "base_run_id=$(jq --raw-output '.baseRunId' <<< "${extension}")" >> "${GITHUB_OUTPUT}"
+          echo "base_results_artifact=$(jq --raw-output '.baseResultsArtifact' <<< "${extension}")" >> "${GITHUB_OUTPUT}"
+          echo "base_tools_artifact=$(jq --raw-output '.baseToolsArtifact' <<< "${extension}")" >> "${GITHUB_OUTPUT}"
+
+  tools:
+    needs: plan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out extension configuration
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download the exact base-run tools
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.plan.outputs.base_tools_artifact }}
+          path: artifacts/calibration-tools
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.plan.outputs.base_run_id }}
+
+      - name: Verify base binaries and current network
+        shell: bash
+        run: |
+          set -euo pipefail
+          verify_hash() {
+            local input_name="$1"
+            local input_path="$2"
+            local expected
+            local observed
+            expected="$(jq --raw-output --arg name "${input_name}" '.calibration.confirmationExtension.baseInputHashes[$name]' evaluation/sixtyfour-strength.json)"
+            observed="$(sha256sum "${input_path}" | cut -d ' ' -f 1)"
+            test "${observed}" = "${expected}"
+          }
+          verify_hash arasan artifacts/calibration-tools/arasanx-64-modern
+          verify_hash reference artifacts/calibration-tools/stockfish-19
+          verify_hash fastchess artifacts/calibration-tools/fastchess
+          network_path="$(jq --raw-output '.network.sourcePath' sdk/upstream.json)"
+          expected_network="$(jq --raw-output '.calibration.confirmationExtension.networkSha256' evaluation/sixtyfour-strength.json)"
+          observed_network="$(sha256sum "${network_path}" | cut -d ' ' -f 1)"
+          test "${observed_network}" = "${expected_network}"
+
+      - name: Retain exact extension tools
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-calibration-extension-tools-${{ github.sha }}
+          path: artifacts/calibration-tools
+          if-no-files-found: error
+          retention-days: 90
+
+  match:
+    name: Extend ${{ matrix.preset }} input ${{ matrix.arasan_elo }}, block ${{ matrix.block }}
+    needs: [plan, tools]
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+
+    steps:
+      - name: Check out evaluation code and test data
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download verified runner tools
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: arasan-calibration-extension-tools-${{ github.sha }}
+          path: artifacts/calibration-tools
+
+      - name: Prepare runner tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x artifacts/calibration-tools/arasanx-64-modern
+          chmod +x artifacts/calibration-tools/stockfish-19
+          chmod +x artifacts/calibration-tools/fastchess
+          network_path="$(jq --raw-output '.network.sourcePath' sdk/upstream.json)"
+          ln --symbolic --force \
+            "${GITHUB_WORKSPACE}/${network_path}" \
+            "artifacts/calibration-tools/$(basename "${network_path}")"
+
+      - name: Run one supplemental opening block
+        shell: bash
+        run: |
+          set -euo pipefail
+          results_path="artifacts/calibration-extension-shards/${{ matrix.preset }}-block-${{ matrix.block }}"
+          mkdir -p "${results_path}"
+          python3 evaluation/run_calibration_eval.py run \
+            --fastchess artifacts/calibration-tools/fastchess \
+            --arasan artifacts/calibration-tools/arasanx-64-modern \
+            --arasan-directory artifacts/calibration-tools \
+            --reference artifacts/calibration-tools/stockfish-19 \
+            --reference-directory artifacts/calibration-tools \
+            --output-directory "${results_path}" \
+            --opening-pairs "${{ matrix.opening_pairs }}" \
+            --opening-order sequential \
+            --opening-start "${{ matrix.opening_start }}" \
+            --concurrency "$(nproc)" \
+            --preset "${{ matrix.preset }}" \
+            --arasan-elo "${{ matrix.arasan_elo }}" \
+            > "${results_path}/console.log" 2>&1
+
+      - name: Upload supplemental block
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-calibration-extension-${{ matrix.preset }}-b${{ matrix.block }}-${{ github.sha }}
+          path: artifacts/calibration-extension-shards
+          if-no-files-found: error
+          retention-days: 1
+
+  report:
+    if: ${{ !cancelled() }}
+    needs: [plan, tools, match]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out evaluation tools
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Download base confirmation results
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ needs.plan.outputs.base_results_artifact }}
+          path: artifacts/base-calibration-confirmation
+          github-token: ${{ github.token }}
+          run-id: ${{ needs.plan.outputs.base_run_id }}
+
+      - name: Download supplemental blocks
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: arasan-calibration-extension-*-b*-${{ github.sha }}
+          path: artifacts/calibration-extension-shards
+
+      - name: Combine base and supplemental samples
+        shell: bash
+        run: |
+          set -euo pipefail
+          mapfile -t shard_paths < <(
+            find artifacts/calibration-extension-shards \
+              -type f -name manifest.json -printf '%h\n' | sort
+          )
+          python3 evaluation/extend_calibration_confirmation.py \
+            artifacts/base-calibration-confirmation \
+            artifacts/calibration-extension \
+            "${shard_paths[@]}"
+
+      - name: Require both extended levels to pass
+        shell: bash
+        run: |
+          python3 evaluation/summarize_calibration_eval.py \
+            --require-pass \
+            artifacts/calibration-extension
+
+      - name: Publish extension summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          if [[ -f artifacts/calibration-extension/summary.md ]]; then
+            cat artifacts/calibration-extension/summary.md >> "${GITHUB_STEP_SUMMARY}"
+          else
+            echo "Calibration extension did not produce a summary." >> "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload extension artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-calibration-extension-${{ github.sha }}
+          path: artifacts/calibration-extension
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Retain failed extension diagnostics
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: arasan-calibration-extension-diagnostics-${{ github.sha }}
+          path: artifacts/calibration-extension-shards
+          if-no-files-found: warn
+          retention-days: 90

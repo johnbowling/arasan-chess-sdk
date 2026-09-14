@@ -262,6 +262,34 @@ check. Only after all six confirmation intervals pass should the app's preset
 inputs be updated. A failure or inconclusive result calls for another targeted
 search or a larger sample, not an automatic product change.
 
+When only selected levels remain inconclusive, the `Targeted calibration
+extension` workflow adds the configured disjoint opening blocks instead of
+repeating already completed games. Its configuration pins the base run,
+artifact names, input hashes, and network hash. The workflow downloads and
+reuses the base run's exact Arasan, Stockfish, and fastchess binaries, verifies
+their hashes, and retains that verified tool bundle for 90 days.
+
+`extend_calibration_confirmation.py` accepts the prior combined result plus the
+new block shards. It requires every unselected base level to have passed,
+allows only passing or inconclusive levels to be extended, and rejects any
+change to the candidate input, reference, clock, options, opening suite, or
+engine hashes. Its report contains only the extended levels because those have
+300 pairs while the already passing levels retain their original 200-pair
+evidence. The full mapping is accepted only when both the original unselected
+results and the targeted extension pass.
+
+To combine a downloaded extension locally:
+
+```sh
+python3 evaluation/extend_calibration_confirmation.py \
+  /absolute/path/to/base-confirmation \
+  /absolute/path/to/combined-extension \
+  /absolute/path/to/supplemental-blocks/*
+python3 evaluation/summarize_calibration_eval.py \
+  --require-pass \
+  /absolute/path/to/combined-extension
+```
+
 ### If SixtyFour replaces Arasan
 
 The experimental method is deliberately more portable than its current file
